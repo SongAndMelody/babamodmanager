@@ -1,0 +1,171 @@
+use std::{fmt::Display, fs, path::PathBuf, str::FromStr};
+
+use crate::{baba, error::BabaError, mods::BabaMod};
+
+/// Represents a single levelpack in Baba is you.
+#[derive(Default, Debug)]
+pub struct Levelpack {
+    // The path to the levelpack (absolute)
+    path: PathBuf,
+    // The name of the pack
+    name: String,
+    // The author of the pack
+    author: String,
+    // The required amount of Spores for 100%
+    prize_max: usize,
+    // The required amount of World Map Clears for 100%
+    clear_max: usize,
+    // The required amount of Bonuses for 100%
+    bonus_max: usize,
+    // Whether or not mods are enabled
+    mods_enabled: bool,
+}
+
+/// Error that might arise when trying to do stuff with levelpacks
+#[derive(Debug)]
+pub enum LevelpackError {
+    /// The requested levelpack does not exist
+    LevelpackDoesNotExist,
+    /// When parsing a field in `world_data.txt`,
+    /// Either the field was not properly formatted (true)
+    /// or the field was not what we were looking for (false)
+    FieldParsingError(bool),
+    /// While parsing a string, something went awry
+    StringParsingError,
+    /// The levelpack does not have an Icon
+    IconNotFound,
+    /// The levelpack folder does not exist
+    LevelpackFolderNotFound {
+        /// The path that was attempted to be browsed for the levelpac
+        bad_path: String
+    },
+    /// The levelpack folder exists, but no pack folders or files were found
+    NoLevelpacksFound
+}
+
+impl Levelpack {
+    /// Create a new Levelpack from a path
+    pub fn new(path: PathBuf) -> Result<Self, BabaError> {
+        // if the levelpack doesn't exist, return early
+        if !fs::exists(path.clone())? {
+            return Err(BabaError::LevelpackError(LevelpackError::LevelpackDoesNotExist));
+        }
+
+        // load the world_data.txt into a String
+        let world_data = fs::read_to_string(path.join("world_data.txt"))?;
+
+        // Initialize the Levelpack with dummy data
+        let mut this = Self {
+            path,
+            ..Default::default()
+        };
+
+        // set data based on each line in the file
+        for line in world_data.lines() {
+            // this should be read as:
+            // Fetch the line in world_data.txt with the leading part "name",
+            // if it exists, parse it and return it as `name`
+            // else, disregard and continue
+            if let Ok(name) = fetch_field("name", line) {
+                this.name = name;
+            }
+            if let Ok(author) = fetch_field("author", line) {
+                this.author = author;
+            }
+            if let Ok(prize_max) = fetch_field("prize_max", line) {
+                this.prize_max = prize_max;
+            }
+            if let Ok(clear_max) = fetch_field("clear_max", line) {
+                this.clear_max = clear_max;
+            }
+            if let Ok(bonus_max) = fetch_field("bonus_max", line) {
+                this.bonus_max = bonus_max;
+            }
+
+            // special case: the mods toggle is based on whether mods=1, but it's a boolean
+            // that is moreso easily found based on whether the line exists, but we
+            // check anyways just in case mods=0
+            if let Ok(mods) = fetch_field("mods", line) {
+                let mods: usize = mods;
+                this.mods_enabled = mods != 0;
+            }
+        }
+
+        Ok(this)
+    }
+
+    /// Returns the associated icon for the levelpack
+    pub fn icon(&self) -> Result<PathBuf, BabaError> {
+        let path = self.path.join("icon.png");
+        if fs::exists(path.clone())? {
+            Ok(path)
+        } else {
+            Err(BabaError::LevelpackError(LevelpackError::IconNotFound))
+        }
+    }
+
+    /// Attempts to find the set of mods in the levelpack.
+    /// This may be zero.
+    pub fn mods(&self) -> Result<Vec<BabaMod>, BabaError> {
+        // if no mods are meant to be loaded, return an empty set of mods
+        if !self.mods_enabled {
+            return Ok(vec![])
+        }
+        let lua_path = self.path.join("Lua");
+        let path_iter = lua_path.read_dir()?;
+        // create a list of levelpacks
+        let mut result = Vec::new();
+
+        // before we iterate over the entries, check to see if any actually exist
+        let iter = path_iter.flatten().collect::<Vec<_>>();
+        if iter.len() == 0 {
+            return Err(BabaError::LevelpackError(LevelpackError::NoLevelpacksFound))
+        }
+        // iterate over each entry
+        for entry in iter {
+            // create a BabaMod from the entry, or discard it if it doesn't work
+            let Ok(baba_mod) = BabaMod::new(entry.path()) else {
+                continue;
+            };
+            // push it onto the list
+            result.push(baba_mod);
+        }
+        Ok(result)
+    }
+}
+
+impl Display for Levelpack {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{} by {}\nCounts: {}/{}/{}\nMods enabled: {}\nFound at: {:?}",
+            self.name,
+            self.author,
+            self.prize_max,
+            self.clear_max,
+            self.bonus_max,
+            self.mods_enabled,
+            self.path
+        )
+    }
+}
+
+/// Attempts to get and parse a field from a line of text
+/// for example: giving `fetch_field<usize>("name", "name=abc")`
+/// should return `Ok("abc")`
+pub fn fetch_field<T>(field: &str, data: &str) -> Result<T, LevelpackError>
+where
+    T: FromStr,
+{
+    let split = data
+        .split_once('=')
+        .ok_or(LevelpackError::FieldParsingError(true))?;
+    if split.0 != field {
+        Err(LevelpackError::FieldParsingError(false))
+    } else {
+        split
+            .1
+            .parse()
+            .map_err(|_| LevelpackError::StringParsingError)
+    }
+}
