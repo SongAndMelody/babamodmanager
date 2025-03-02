@@ -19,7 +19,7 @@ pub struct BabaMod {
 }
 
 impl BabaMod {
-    /// Create a new BabaMod from the path to either the directory, or the 
+    /// Create a new BabaMod from the path to either the directory, or the file
     pub fn new(path: PathBuf) -> Result<Self, BabaError> {
         let name = path
             .file_name()
@@ -35,11 +35,35 @@ impl BabaMod {
     pub fn is_singleton(&self) -> bool {
         self.path.extension().is_some()
     }
+
+    /// Returns whether this BabaMod has a config file associated with it
+    pub fn has_config(&self) -> bool {
+        self.config.is_some()
+    }
+
+    /// Gets the path for the sprites folder
+    pub fn sprites_folder(&self) -> PathBuf {
+        self.path.join(r"..\..\Sprites")
+    }
+
+    /// Returns a vector of any relevant files to the mod.
+    pub fn all_relevant_files(&self) -> Vec<PathBuf> {
+        let mut result = Vec::new();
+        result.push(self.path.clone());
+        // If there's no config, we only worry about ourselves
+        let Some(config) = self.config.clone() else {
+            return result;
+        };
+        // first, we push on every file as called for in the config's files set
+        config.files.iter().for_each(|file| result.push(PathBuf::from(file)));
+        // then we head into the sprites folder
+        result
+    }
 }
 
 /// Represents a configuration file for a mod, unique to the manager.
 /// this also represents a mod that could be fetched from elsewhere
-#[derive(serde::Serialize, serde::Deserialize, Debug)]
+#[derive(serde::Serialize, serde::Deserialize, Debug, Default, Clone)]
 pub struct Config {
     /// The mod ID, used for compatibilities
     modid: String,

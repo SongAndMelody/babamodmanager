@@ -37,10 +37,10 @@ pub enum LevelpackError {
     /// The levelpack folder does not exist
     LevelpackFolderNotFound {
         /// The path that was attempted to be browsed for the levelpac
-        bad_path: String
+        bad_path: String,
     },
     /// The levelpack folder exists, but no pack folders or files were found
-    NoLevelpacksFound
+    NoLevelpacksFound,
 }
 
 impl Levelpack {
@@ -48,7 +48,9 @@ impl Levelpack {
     pub fn new(path: PathBuf) -> Result<Self, BabaError> {
         // if the levelpack doesn't exist, return early
         if !fs::exists(path.clone())? {
-            return Err(BabaError::LevelpackError(LevelpackError::LevelpackDoesNotExist));
+            return Err(BabaError::LevelpackError(
+                LevelpackError::LevelpackDoesNotExist,
+            ));
         }
 
         // load the world_data.txt into a String
@@ -94,24 +96,14 @@ impl Levelpack {
         Ok(this)
     }
 
-    /// Returns the associated icon for the levelpack
-    pub fn icon(&self) -> Result<PathBuf, BabaError> {
-        let path = self.path.join("icon.png");
-        if fs::exists(path.clone())? {
-            Ok(path)
-        } else {
-            Err(BabaError::LevelpackError(LevelpackError::IconNotFound))
-        }
-    }
-
     /// Attempts to find the set of mods in the levelpack.
     /// This may be zero.
     pub fn mods(&self) -> Result<Vec<BabaMod>, BabaError> {
         // if no mods are meant to be loaded, return an empty set of mods
         if !self.mods_enabled {
-            return Ok(vec![])
+            return Ok(vec![]);
         }
-        let lua_path = self.path.join("Lua");
+        let lua_path = self.pack_file(LevelpackFile::Lua);
         let path_iter = lua_path.read_dir()?;
         // create a list of levelpacks
         let mut result = Vec::new();
@@ -119,7 +111,7 @@ impl Levelpack {
         // before we iterate over the entries, check to see if any actually exist
         let iter = path_iter.flatten().collect::<Vec<_>>();
         if iter.len() == 0 {
-            return Err(BabaError::LevelpackError(LevelpackError::NoLevelpacksFound))
+            return Err(BabaError::LevelpackError(LevelpackError::NoLevelpacksFound));
         }
         // iterate over each entry
         for entry in iter {
@@ -131,6 +123,11 @@ impl Levelpack {
             result.push(baba_mod);
         }
         Ok(result)
+    }
+
+    pub fn pack_file(&self, file: LevelpackFile) -> PathBuf {
+        let joiner: String = file.into();
+        self.path.join(joiner)
     }
 }
 
@@ -147,6 +144,59 @@ impl Display for Levelpack {
             self.mods_enabled,
             self.path
         )
+    }
+}
+
+/// Represents a file inside the levelpack folder
+pub enum LevelpackFile {
+    /// The world data file (`world_data.txt`)
+    WorldDataTxt,
+    /// The levelpack icon (`icon.png`)
+    IconPng,
+    /// The folder used to hold large images (such as world maps)
+    Images,
+    /// The folder used to hold mods
+    Lua,
+    /// The folder used to hold music data (in `.ogg` format)
+    Music,
+    /// The folder used to hold palettes (5px tall by 7px wide sprites)
+    Palettes,
+    /// The folder used to hold sprites (24px squared)
+    Sprites,
+    /// The folder used to hold theme data
+    Themes,
+}
+
+impl FromStr for LevelpackFile {
+    type Err = LevelpackError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(match s.to_lowercase().as_str() {
+            "worlddata" | "world_data.txt" => Self::WorldDataTxt,
+            "images" => Self::Images,
+            "lua" | "mods" => Self::Lua,
+            "palettes" => Self::Palettes,
+            "sprites" => Self::Sprites,
+            "themes" => Self::Themes,
+            "icon" | "icon.png" => Self::IconPng,
+            _ => return Err(LevelpackError::StringParsingError),
+        })
+    }
+}
+
+impl From<LevelpackFile> for String {
+    fn from(value: LevelpackFile) -> Self {
+        match value {
+            LevelpackFile::WorldDataTxt => "world_data.txt",
+            LevelpackFile::Images => "Images",
+            LevelpackFile::Lua => "Lua",
+            LevelpackFile::Music => "Music",
+            LevelpackFile::Palettes => "Palettes",
+            LevelpackFile::Sprites => "Sprites",
+            LevelpackFile::Themes => "Themes",
+            LevelpackFile::IconPng => "icon.png",
+        }
+        .to_owned()
     }
 }
 
