@@ -1,5 +1,7 @@
 use std::{fs, io, path::PathBuf};
 
+use serde::{Deserialize, Serialize};
+
 use crate::{error::BabaError, levelpack::{Levelpack, LevelpackError}};
 
 /// A list of "reserved" names that are used by baba.
@@ -9,7 +11,7 @@ use crate::{error::BabaError, levelpack::{Levelpack, LevelpackError}};
 const RESERVED_PACK_NAMES: [&str; 5] = ["baba", "debug", "museum", "new_adv", "levels"];
 
 /// A representation of the Baba is You file structure.
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct BabaFiles {
     // The path to the root folder (that contains the .exe)
     path: PathBuf,
