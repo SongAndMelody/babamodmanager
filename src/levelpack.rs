@@ -2,22 +2,25 @@ use std::{fmt::Display, fs, path::PathBuf, str::FromStr};
 
 use crate::{baba, error::BabaError, mods::BabaMod};
 
+/// The name of the file that holds the world data
+const WORLD_DATA_FILE_NAME: &str = "world_data.txt";
+
 /// Represents a single levelpack in Baba is you.
 #[derive(Default, Debug)]
 pub struct Levelpack {
-    // The path to the levelpack (absolute)
+    /// The path to the levelpack (absolute)
     path: PathBuf,
-    // The name of the pack
+    /// The name of the pack
     name: String,
-    // The author of the pack
+    /// The author of the pack
     author: String,
-    // The required amount of Spores for 100%
+    /// The required amount of Spores for 100%
     prize_max: usize,
-    // The required amount of World Map Clears for 100%
+    /// The required amount of World Map Clears for 100%
     clear_max: usize,
-    // The required amount of Bonuses for 100%
+    /// The required amount of Bonuses for 100%
     bonus_max: usize,
-    // Whether or not mods are enabled
+    /// Whether or not mods are enabled
     mods_enabled: bool,
 }
 
@@ -36,7 +39,7 @@ pub enum LevelpackError {
     IconNotFound,
     /// The levelpack folder does not exist
     LevelpackFolderNotFound {
-        /// The path that was attempted to be browsed for the levelpac
+        /// The path that was attempted to be browsed for the levelpack
         bad_path: String,
     },
     /// The levelpack folder exists, but no pack folders or files were found
@@ -44,7 +47,12 @@ pub enum LevelpackError {
 }
 
 impl Levelpack {
-    /// Create a new Levelpack from a path
+    /// Create a new Levelpack from a path.
+    /// 
+    /// # Errors
+    /// This function may error if:
+    /// - The given path does not exist ([`LevelpackError::LevelpackDoesNotExist`])
+    /// - There was an issue opening the `world`
     pub fn new(path: PathBuf) -> Result<Self, BabaError> {
         // if the levelpack doesn't exist, return early
         if !fs::exists(path.clone())? {
@@ -54,7 +62,7 @@ impl Levelpack {
         }
 
         // load the world_data.txt into a String
-        let world_data = fs::read_to_string(path.join("world_data.txt"))?;
+        let world_data = fs::read_to_string(path.join(WORLD_DATA_FILE_NAME))?;
 
         // Initialize the Levelpack with dummy data
         let mut this = Self {
@@ -98,6 +106,9 @@ impl Levelpack {
 
     /// Attempts to find the set of mods in the levelpack.
     /// This may be zero.
+    /// 
+    /// # Errors
+    /// This function may error if there was an error reading the mods directory ([`std::io::Error`])
     pub fn mods(&self) -> Result<Vec<BabaMod>, BabaError> {
         // if no mods are meant to be loaded, return an empty set of mods
         if !self.mods_enabled {
@@ -110,21 +121,21 @@ impl Levelpack {
 
         // before we iterate over the entries, check to see if any actually exist
         let iter = path_iter.flatten().collect::<Vec<_>>();
+        // if not, just return an empty vector
         if iter.len() == 0 {
-            return Err(BabaError::LevelpackError(LevelpackError::NoLevelpacksFound));
+            return Ok(vec![]);
         }
         // iterate over each entry
         for entry in iter {
-            // create a BabaMod from the entry, or discard it if it doesn't work
-            let Ok(baba_mod) = BabaMod::new(entry.path()) else {
-                continue;
-            };
+            // create a BabaMod from the entry
+            let baba_mod = BabaMod::new(entry.path());
             // push it onto the list
             result.push(baba_mod);
         }
         Ok(result)
     }
 
+    /// Gets the path of a [`LevelpackFile`]
     pub fn pack_file(&self, file: LevelpackFile) -> PathBuf {
         let joiner: String = file.into();
         self.path.join(joiner)
@@ -200,9 +211,16 @@ impl From<LevelpackFile> for String {
     }
 }
 
-/// Attempts to get and parse a field from a line of text
-/// for example: giving `fetch_field<usize>("name", "name=abc")`
+/// Attempts to get and parse a field from a line of text.
+/// 
+/// For example: giving `fetch_field<usize>("name", "name=abc")`
 /// should return `Ok("abc")`
+/// 
+/// # Errors
+/// This function may error if:
+/// - When parsing the field, it did not match the `"lhs=rhs"` format
+/// - The left hand side did not match the `field` parameter
+/// - The right hand side could not be properly parsed into the desired type
 pub fn fetch_field<T>(field: &str, data: &str) -> Result<T, LevelpackError>
 where
     T: FromStr,

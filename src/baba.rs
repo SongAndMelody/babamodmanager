@@ -10,6 +10,9 @@ use crate::{error::BabaError, levelpack::{Levelpack, LevelpackError}};
 /// - `levels` stores the player's one-off levels
 const RESERVED_PACK_NAMES: [&str; 5] = ["baba", "debug", "museum", "new_adv", "levels"];
 
+/// The steam path to Baba is You, if it was installed via steam
+const STEAM_PATH: &str = r"C:\Program Files (x86)\Steam\steamapps\common\Baba Is You";
+
 /// A representation of the Baba is You file structure.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct BabaFiles {
@@ -20,17 +23,18 @@ pub struct BabaFiles {
 impl BabaFiles {
     /// Creates a BabaFiles from a raw path to the root.
     /// This is not usually reccomended, but is
-    /// required 
+    /// required for e.g. Itch.io installations
     pub fn from_raw(path: PathBuf) -> Self {
         Self { path }
     }
     /// Creates a BabaFiles by looking for the Baba installation from steam.
+    /// 
+    /// # Errors
     /// Returns `Err` under one of two scenarios:
     /// - Steam is not installed (`Err(None)`)
     /// - The file operation returns an error (returns that error in `Err(Some(e))`)
     pub fn from_steam() -> Result<Self, Option<io::Error>> {
-        let steam_path = r"C:\Program Files (x86)\Steam\steamapps\common\Baba Is You";
-        let steam_path = PathBuf::from(steam_path);
+        let steam_path = PathBuf::from(STEAM_PATH);
         match fs::exists(steam_path.clone()) {
             Ok(true) => Ok(Self::from_raw(steam_path)),
             Ok(false) => Err(None),
@@ -43,7 +47,9 @@ impl BabaFiles {
         self.path.join("Lua")
     }
     /// Fetches the directory for levelpacks
-    /// Returns `None` if the operation failed for whatever reason
+    /// 
+    /// # Errors
+    /// Returns [`LevelpackError::LevelpackFolderNotFound`] if the folder for levelpacks doesn't exist
     pub fn levelpacks_dir(&self) -> Result<PathBuf, LevelpackError> {
         let path = self.path.join("Data").join("Worlds");
         if path.exists() {
@@ -53,6 +59,13 @@ impl BabaFiles {
         }
     }
 
+    /// Fetches a list of levelpacks from the `Worlds` directory
+    /// 
+    /// # Errors
+    /// This function may error if any of the following happen:
+    /// - The levelpacks directory does not exist (returns a nested [`LevelpackError::LevelpackFolderNotFound`])
+    /// - The directory could not be read (returns a nested [`io::Error`])
+    /// - The directory holds zero levelpacks, irrespective of `respect_reserved_names` (returns a nested [`LevelpackError::NoLevelpacksFound`])
     pub fn levelpacks(&self, respect_reserved_names: bool) -> Result<Vec<Levelpack>, BabaError> {
         // get the directory for the levelpacks
         let path = self.levelpacks_dir()?;

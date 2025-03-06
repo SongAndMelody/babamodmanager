@@ -12,22 +12,21 @@ use crate::error::BabaError;
 /// The name of the config file.
 /// This should be located inside of the mod folder (i.e. `Lua\[mod]\[this value]`)
 const CONFIG_FILE_NAME: &str = "Config.js";
-/// The set of characters to search for when ignoring files
-/// This is used sometimes for init files and the like
-/// This pattern needs to appear as the first line of the file
-const IGNORE_FILE_HEADER: &str = "-- BABAMODMANAGER: IGNORE";
 
 /// Represents a Mod in Baba is You
 #[derive(Debug)]
 pub struct BabaMod {
+    /// The path to the mod (should be absolute)
     path: PathBuf,
+    /// The config for the mod, if one exists
     config: Option<Config>,
+    /// The name of the mod
     name: String,
 }
 
 impl BabaMod {
     /// Create a new BabaMod from the path to either the directory, or the file
-    pub fn new(path: PathBuf) -> Result<Self, BabaError> {
+    pub fn new(path: PathBuf) -> Self {
         let name = path
             .file_name()
             .map(|x| x.to_os_string())
@@ -35,7 +34,7 @@ impl BabaMod {
             .into_string()
             .unwrap_or("[No name Given!]".to_owned());
         let config = Config::new(path.join(CONFIG_FILE_NAME)).ok();
-        Ok(Self { path, config, name })
+        Self { path, config, name }
     }
 
     /// Reports whether the mod is a singleton (i.e. a standalone lua file)
@@ -70,6 +69,7 @@ impl BabaMod {
         result
     }
 
+    /// Returns a set of functions that the mod overrides
     pub fn overriden_functions(&self) -> HashSet<LuaFunction> {
         let mut result = HashSet::new();
         let iter = self.all_relevant_files().into_iter().filter(is_lua_file);
@@ -83,7 +83,9 @@ impl BabaMod {
         result
     }
 
-    pub fn is_compatible_with(&self, other: Self) -> bool {
+    /// Returns whether this mod is compatible with another mod
+    /// via way of function overrides
+    pub fn is_compatible_with(&self, other: &Self) -> bool {
         self.overriden_functions().is_disjoint(&other.overriden_functions())
     }
 }
@@ -129,14 +131,19 @@ impl Config {
     }
 
     /// creates a config directly from json data
+    /// 
+    /// # Errors
+    /// Errors if [`serde_json::from_value`] errors.
     pub fn from_json(value: serde_json::Value) -> Result<Self, BabaError> {
         let config: Config = serde_json::from_value(value)?;
         Ok(config)
     }
 }
 
+/// An error arised when dealing with mods
 #[derive(Debug)]
 pub enum ModdingError {
+    /// The specified file was not a config file
     NotAConfigFile,
 }
 

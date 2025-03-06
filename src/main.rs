@@ -6,6 +6,7 @@ mod levelpack;
 mod test;
 mod mods;
 mod error;
+mod merge;
 
 use eframe::{self, NativeOptions};
 

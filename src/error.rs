@@ -2,11 +2,16 @@ use std::io;
 
 use crate::{levelpack::LevelpackError, mods::ModdingError};
 
+/// A generic error that holds any given error that the program may arise
 #[derive(Debug)]
 pub enum BabaError {
+    /// There was an issue with fetching levelpacks
     LevelpackError(LevelpackError),
+    /// There was an error with filesystems or some other IO issue
     IOError(io::Error),
+    /// There was an error when fetching or working with mods
     ModdingError(ModdingError),
+    /// There was an error when parsing json
     SerdeJsonError(serde_json::Error)
 }
 

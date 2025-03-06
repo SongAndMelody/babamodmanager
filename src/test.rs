@@ -1,3 +1,5 @@
+
+/// Tests whether or not `fetch_field` returns an `Ok` variant
 #[test]
 fn fetch_field_1() {
     use crate::levelpack::fetch_field as ff;
@@ -5,6 +7,7 @@ fn fetch_field_1() {
     assert!(x.is_ok());
 }
 
+/// Tests whether or not `fetch_field` returns the proper value
 #[test]
 fn fetch_field_2() {
     use crate::levelpack::fetch_field as ff;
