@@ -56,9 +56,11 @@ impl BabaMod {
         };
         // first, we push on every file as called for in the config's files set
         config.files.iter().for_each(|file| result.push(PathBuf::from(file)));
-        // then we head into the sprites folder
+        // TODO: add sprites, etc. to this list
         result
     }
+
+    // pub fn overriden_functions(&self) {}
 }
 
 /// Represents a configuration file for a mod, unique to the manager.
@@ -111,4 +113,10 @@ impl Config {
 #[derive(Debug)]
 pub enum ModdingError {
     NotAConfigFile,
+}
+
+// A Lua function used in either a baba mod, or baba is you
+pub struct LuaFunction {
+    path: PathBuf,
+
 }
