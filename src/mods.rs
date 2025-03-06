@@ -1,4 +1,11 @@
-use std::{fs::{self, read_to_string}, path::PathBuf};
+use std::{
+    collections::HashSet,
+    ffi::OsStr,
+    fs::{self, read_to_string},
+    path::PathBuf,
+};
+
+use serde::{Deserialize, Serialize};
 
 use crate::error::BabaError;
 
@@ -15,7 +22,7 @@ const IGNORE_FILE_HEADER: &str = "-- BABAMODMANAGER: IGNORE";
 pub struct BabaMod {
     path: PathBuf,
     config: Option<Config>,
-    name: String
+    name: String,
 }
 
 impl BabaMod {
@@ -55,12 +62,30 @@ impl BabaMod {
             return result;
         };
         // first, we push on every file as called for in the config's files set
-        config.files.iter().for_each(|file| result.push(PathBuf::from(file)));
+        config
+            .files
+            .iter()
+            .for_each(|file| result.push(PathBuf::from(file)));
         // TODO: add sprites, etc. to this list
         result
     }
 
-    // pub fn overriden_functions(&self) {}
+    pub fn overriden_functions(&self) -> HashSet<LuaFunction> {
+        let mut result = HashSet::new();
+        let iter = self.all_relevant_files().into_iter().filter(is_lua_file);
+        for file in iter {
+            let Ok(contents) = fs::read_to_string(file) else {
+                continue;
+            };
+            let set = functions_from_string(contents);
+            result = result.union(&set).map(Clone::clone).collect();
+        }
+        result
+    }
+
+    pub fn is_compatible_with(&self, other: Self) -> bool {
+        self.overriden_functions().is_disjoint(&other.overriden_functions())
+    }
 }
 
 /// Represents a configuration file for a mod, unique to the manager.
@@ -86,7 +111,7 @@ pub struct Config {
     /// A list of all files that belong to the mod
     files: Vec<String>,
     /// A list of sprites that belong to the mod
-    sprites: Vec<String>
+    sprites: Vec<String>,
 }
 
 impl Config {
@@ -116,7 +141,39 @@ pub enum ModdingError {
 }
 
 // A Lua function used in either a baba mod, or baba is you
+#[derive(Debug, Serialize, Deserialize, Hash, PartialEq, Eq, Clone)]
 pub struct LuaFunction {
-    path: PathBuf,
+    name: String,
+    is_baba_native: bool,
+}
 
+fn is_lua_file(path: &PathBuf) -> bool {
+    path.extension().map(OsStr::to_os_string) == Some("lua".into())
+}
+
+fn functions_from_string(str: String) -> HashSet<LuaFunction> {
+    let mut result = HashSet::new();
+    for line in str.lines() {
+        if line.starts_with("function") {
+            let name = line
+                .split(' ')
+                .nth(1)
+                .unwrap_or("FUNCTION_NOT_FOUND")
+                .to_owned();
+            let is_baba_native = baba_function_names().contains(&name);
+            let function = LuaFunction {
+                name,
+                is_baba_native,
+            };
+            result.insert(function);
+        }
+    }
+    result
+}
+
+fn baba_function_names() -> HashSet<String> {
+    include_str!("data/babafuncs.txt")
+        .split('\n')
+        .map(ToOwned::to_owned)
+        .collect()
 }
