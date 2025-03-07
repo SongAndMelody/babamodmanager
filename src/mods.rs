@@ -77,16 +77,34 @@ impl BabaMod {
             let Ok(contents) = fs::read_to_string(file) else {
                 continue;
             };
-            let set = functions_from_string(contents);
+            let set = functions_from_string(&contents);
             result = result.union(&set).map(Clone::clone).collect();
         }
         result
     }
 
+    /// Grabs all the sprites in the sprites folder by name
+    ///
+    /// # Errors
+    /// Will only throw an error if the directory from [`BabaMod::sprites_folder`] is unable to be read
+    pub fn sprites_by_name(&self) -> Result<HashSet<String>, BabaError> {
+        Ok(self
+            .sprites_folder()
+            .read_dir()?
+            .flatten()
+            .map(|x| x.file_name().into_string().unwrap_or_default())
+            .collect())
+    }
+
     /// Returns whether this mod is compatible with another mod
-    /// via way of function overrides
+    /// via way of function overrides & sprite checks
     pub fn is_compatible_with(&self, other: &Self) -> bool {
-        self.overriden_functions().is_disjoint(&other.overriden_functions())
+        self.overriden_functions()
+            .is_disjoint(&other.overriden_functions())
+            && self
+                .sprites_by_name()
+                .unwrap_or_default()
+                .is_disjoint(&other.sprites_by_name().unwrap_or_default())
     }
 }
 
@@ -131,7 +149,7 @@ impl Config {
     }
 
     /// creates a config directly from json data
-    /// 
+    ///
     /// # Errors
     /// Errors if [`serde_json::from_value`] errors.
     pub fn from_json(value: serde_json::Value) -> Result<Self, BabaError> {
@@ -154,11 +172,20 @@ pub struct LuaFunction {
     is_baba_native: bool,
 }
 
+impl LuaFunction {
+    pub fn is_baba_native(&self) -> bool {
+        self.is_baba_native
+    }
+    pub fn name(&self) -> String {
+        self.name.clone()
+    }
+}
+
 fn is_lua_file(path: &PathBuf) -> bool {
     path.extension().map(OsStr::to_os_string) == Some("lua".into())
 }
 
-fn functions_from_string(str: String) -> HashSet<LuaFunction> {
+pub fn functions_from_string(str: &str) -> HashSet<LuaFunction> {
     let mut result = HashSet::new();
     for line in str.lines() {
         if line.starts_with("function") {
