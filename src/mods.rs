@@ -2,7 +2,7 @@ use std::{
     collections::HashSet,
     ffi::OsStr,
     fs::{self, read_to_string},
-    path::PathBuf,
+    path::PathBuf, str::FromStr,
 };
 
 use serde::{Deserialize, Serialize};
@@ -70,7 +70,7 @@ impl BabaMod {
     }
 
     /// Returns a set of functions that the mod overrides
-    pub fn overriden_functions(&self) -> HashSet<LuaFunction> {
+    pub fn overriden_functions(&self) -> HashSet<LuaFunctionDefinition> {
         let mut result = HashSet::new();
         let iter = self.all_relevant_files().into_iter().filter(is_lua_file);
         for file in iter {
@@ -163,16 +163,18 @@ impl Config {
 pub enum ModdingError {
     /// The specified file was not a config file
     NotAConfigFile,
+    /// The specified string could not be parsed into a function
+    NotALuaFunction
 }
 
 // A Lua function used in either a baba mod, or baba is you
 #[derive(Debug, Serialize, Deserialize, Hash, PartialEq, Eq, Clone)]
-pub struct LuaFunction {
+pub struct LuaFunctionDefinition {
     name: String,
     is_baba_native: bool,
 }
 
-impl LuaFunction {
+impl LuaFunctionDefinition {
     pub fn is_baba_native(&self) -> bool {
         self.is_baba_native
     }
@@ -181,26 +183,62 @@ impl LuaFunction {
     }
 }
 
+impl FromStr for LuaFunctionDefinition {
+    type Err = ModdingError;
+
+    fn from_str(line: &str) -> Result<Self, Self::Err> {
+        if !line.starts_with("function") {
+            return Err(ModdingError::NotALuaFunction);
+        }
+        let name = line
+            .split(' ')
+            .nth(1)
+            .ok_or(ModdingError::NotALuaFunction)?
+            .to_owned();
+        let is_baba_native = baba_function_names().contains(&name);
+        let function = LuaFunctionDefinition {
+            name,
+            is_baba_native,
+        };
+        Ok(function)
+    }
+}
+
+pub struct LuaFunction {
+    definition: LuaFunctionDefinition,
+    code: String
+}
+
+impl LuaFunction {
+    pub fn code(&self) -> &str {
+        &self.code
+    }
+}
+
+impl FromStr for LuaFunction {
+    type Err = ModdingError;
+
+    fn from_str(line: &str) -> Result<Self, Self::Err> {
+        let function = line.parse()?;
+        Ok(Self {
+            definition: function,
+            code: line.to_owned(),
+        })
+    }
+}
+
+/// Returns whether or not the [`PathBuf`] is a 
 fn is_lua_file(path: &PathBuf) -> bool {
     path.extension().map(OsStr::to_os_string) == Some("lua".into())
 }
 
-pub fn functions_from_string(str: &str) -> HashSet<LuaFunction> {
+pub fn functions_from_string(str: &str) -> HashSet<LuaFunctionDefinition> {
     let mut result = HashSet::new();
     for line in str.lines() {
-        if line.starts_with("function") {
-            let name = line
-                .split(' ')
-                .nth(1)
-                .unwrap_or("FUNCTION_NOT_FOUND")
-                .to_owned();
-            let is_baba_native = baba_function_names().contains(&name);
-            let function = LuaFunction {
-                name,
-                is_baba_native,
-            };
-            result.insert(function);
-        }
+        let Ok(function) = line.parse() else {
+            continue;
+        };
+        result.insert(function);
     }
     result
 }

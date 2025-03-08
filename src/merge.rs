@@ -1,11 +1,13 @@
-use crate::mods::functions_from_string as funcs;
+use std::str::FromStr;
+
+use crate::mods::{functions_from_string as funcs, LuaFunction};
 
 /// Defines the prefix of a lua function,
-/// if duplicates are found, and it is 
+/// if duplicates are found, and it is
 /// on the *left* hand side of the arguments
 const LEFT_HAND_SUFFIX: &str = "_left";
 /// Defines the prefix of a lua function,
-/// if duplicates are found, and it is 
+/// if duplicates are found, and it is
 /// on the *right* hand side of the arguments
 const RIGHT_HAND_SUFFIX: &str = "_right";
 
@@ -52,6 +54,15 @@ fn merge_strings(mut left: String, mut right: String) -> String {
         return concat_strings(left, right);
     }
 
+    // otherwise, we do have some baba native functions,
+    // which need merging
+    // we snag the list of functions from each file
+    let mut lhs_funcs = string_to_function_strings(&left);
+    let mut rhs_funcs = string_to_function_strings(&right);
+    // sort them by name
+    lhs_funcs.sort_by(|left, right| left.code().cmp(right.code()));
+    rhs_funcs.sort_by(|left, right| left.code().cmp(right.code()));
+
     todo!()
 }
 
@@ -61,8 +72,10 @@ fn concat_strings(mut left: String, right: String) -> String {
     left
 }
 
-
-fn string_to_function_strings(file: String) -> Vec<String> {
+/// Splits a string into a set of Lua functions (also as Strings).
+///
+/// This discards any extraneous data, only containing the functions.
+fn string_to_function_strings(file: &str) -> Vec<LuaFunction> {
     // Split the string at every use of `function`
     file.split("function")
         // split it again at every `end` without indentation,
@@ -78,6 +91,15 @@ fn string_to_function_strings(file: String) -> Vec<String> {
         .map(|str| concat_strings("function".to_owned(), str))
         // puts the `end` on the back of the string
         .map(|str| concat_strings(str, "\nend".to_owned()))
+        // String -> Result<LuaFunction, Error>
+        .map(|arg0| LuaFunction::from_str(&arg0))
+        // Result<LuaFunction, Error> -> LuaFunction (discards errors)
+        .flatten()
         // collect it into a list
         .collect()
+}
+
+/// Merges two strings, given that they're valid Lua function code
+fn merge_functions(left: String, right: String) -> String {
+    todo!()
 }
