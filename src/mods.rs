@@ -210,6 +210,15 @@ pub struct LuaFunction {
 }
 
 impl LuaFunction {
+    /// Creates a [`LuaFunction`] from a definition and code.
+    /// Note that this can be the whole code file, and it only picks out
+    /// the one function.
+    /// 
+    /// May return [`None`] if the provided code does not have the value.
+    pub fn from_definition_and_code(definition: &LuaFunctionDefinition, code: &str) -> Option<Self> {
+        let functions = string_to_function_strings(code);
+        functions.into_iter().find(|func| func.definition == *definition)
+    }
     pub fn code(&self) -> &str {
         &self.code
     }
@@ -248,4 +257,37 @@ fn baba_function_names() -> HashSet<String> {
         .split('\n')
         .map(ToOwned::to_owned)
         .collect()
+}
+
+/// Splits a string into a set of Lua functions (also as Strings).
+///
+/// This discards any extraneous data, only containing the functions.
+pub fn string_to_function_strings(file: &str) -> Vec<LuaFunction> {
+    // Split the string at every use of `function`
+    file.split("function")
+        // split it again at every `end` without indentation,
+        // then grab the first part (so before the end)
+        .map(|x| x.split("\nend").next())
+        // we should have at least something before the end
+        // so this is just type casting from
+        // Option<&str> -> &str
+        .map(Option::unwrap_or_default)
+        // &str -> String
+        .map(ToOwned::to_owned)
+        // puts the `function` back on the front of the string
+        .map(|str| concat_strings("function".to_owned(), str))
+        // puts the `end` on the back of the string
+        .map(|str| concat_strings(str, "\nend".to_owned()))
+        // String -> Result<LuaFunction, Error>
+        .map(|arg0| LuaFunction::from_str(&arg0))
+        // Result<LuaFunction, Error> -> LuaFunction (discards errors)
+        .flatten()
+        // collect it into a list
+        .collect()
+}
+
+/// Concatenates two strings, putting the second at the end of the first.
+pub fn concat_strings(mut left: String, right: String) -> String {
+    left.push_str(&right);
+    left
 }

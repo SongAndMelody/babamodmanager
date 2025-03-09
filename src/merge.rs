@@ -1,6 +1,6 @@
 use std::str::FromStr;
 
-use crate::mods::{functions_from_string as funcs, LuaFunction};
+use crate::mods::{concat_strings, functions_from_string as funcs, LuaFunction};
 
 /// Defines the prefix of a lua function,
 /// if duplicates are found, and it is
@@ -19,19 +19,16 @@ fn merge_strings(mut left: String, mut right: String) -> String {
     // get the set of Lua Functions from each file
     let lhs = funcs(&left);
     let rhs = funcs(&right);
-    // if the two are disjoint...
-    if lhs.is_disjoint(&rhs) {
-        // then we can just put one file after another and return it
-        return concat_strings(left, right);
-    }
 
-    // otherwise, grab the intersections
+    // grab the intersections
     let intersections = lhs.intersection(&rhs);
-    // iterate over them
+    // iterate over the intersections
+    // if there are none, the loop does nothing
+    // and we just return the two files concatenated (see below)
     for func in intersections {
         // if it is not native to baba...
         if !func.is_baba_native() {
-            // we rename the function
+            // we can just rename the functions
             // grab its name
             let name = func.name();
             // create new names for the left and right hand sides
@@ -44,47 +41,33 @@ fn merge_strings(mut left: String, mut right: String) -> String {
             right = right.replace(&name, &right_func);
         } else {
             // it IS native to baba
-
+            // grab the functions from each file
+            let lhs= LuaFunction::from_definition_and_code(func, &left);
+            let rhs = LuaFunction::from_definition_and_code(func, &right);
+            // if the function doesn't actually exist in both files, we can skip it
+            // NOTE: Might be a good idea to check why?
+            // I think in most instances this is just a guarded Option<LuaFunction> -> LuaFunction cast
+            let (Some(left_func), Some(right_func)) = (lhs, rhs) else {
+                continue;
+            };
+            // remove the code from the files
+            // We'll be appending it later to the left file
+            left = left.replace(left_func.code(), "");
+            right = right.replace(right_func.code(), "");
+            // merge the functions
+            let new_func = merge_functions(left_func, right_func);
+            // merge it onto the left file
+            left.push_str(&new_func.code());
         }
     }
-
-    todo!()
+    // Now that all the issues have been ironed out,
+    // we can concatenate the two files together
+    // with no issues! hopefully
+    concat_strings(left, right)
 }
 
-/// Concatenates two strings, putting the second at the end of the first.
-fn concat_strings(mut left: String, right: String) -> String {
-    left.push_str(&right);
-    left
-}
 
-/// Splits a string into a set of Lua functions (also as Strings).
-///
-/// This discards any extraneous data, only containing the functions.
-fn string_to_function_strings(file: &str) -> Vec<LuaFunction> {
-    // Split the string at every use of `function`
-    file.split("function")
-        // split it again at every `end` without indentation,
-        // then grab the first part (so before the end)
-        .map(|x| x.split("\nend").next())
-        // we should have at least something before the end
-        // so this is just type casting from
-        // Option<&str> -> &str
-        .map(Option::unwrap_or_default)
-        // &str -> String
-        .map(ToOwned::to_owned)
-        // puts the `function` back on the front of the string
-        .map(|str| concat_strings("function".to_owned(), str))
-        // puts the `end` on the back of the string
-        .map(|str| concat_strings(str, "\nend".to_owned()))
-        // String -> Result<LuaFunction, Error>
-        .map(|arg0| LuaFunction::from_str(&arg0))
-        // Result<LuaFunction, Error> -> LuaFunction (discards errors)
-        .flatten()
-        // collect it into a list
-        .collect()
-}
-
-/// Merges two strings, given that they're valid Lua function code
-fn merge_functions(left: String, right: String) -> String {
+/// Merges two Lua Functions
+fn merge_functions(left: LuaFunction, right: LuaFunction) -> LuaFunction {
     todo!()
 }
