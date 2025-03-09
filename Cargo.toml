@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+diff = "0.1.13"
 eframe = "0.31.0"
 egui = "0.31.0"
 serde = {version = "1.0.218", features = ["derive"]}

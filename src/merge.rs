@@ -1,6 +1,8 @@
 use std::str::FromStr;
 
-use crate::mods::{concat_strings, functions_from_string as funcs, LuaFunction};
+use crate::{error::BabaError, mods::{concat_strings, functions_from_string as funcs, LuaFunction}};
+
+use diff::{lines as diff_lines, Result as Diff};
 
 /// Defines the prefix of a lua function,
 /// if duplicates are found, and it is
@@ -15,7 +17,14 @@ const RIGHT_HAND_SUFFIX: &str = "_right";
 /// # Technicalities
 /// - The order of parameters matter - the two Strings are merged into one, with the
 /// left parameter coming first, and the second parameter coming after.
-fn merge_strings(mut left: String, mut right: String) -> String {
+/// - Functions are only merged if they both override a function from Baba is You.
+/// Otherwise, they are renamed with additional suffixes - see [`LEFT_HAND_SUFFIX`] and [`RIGHT_HAND_SUFFIX`]
+/// for specifics on those values.
+/// - In the case where functions are merged, the file is ordered with the left file's data first,
+/// then merged data, then the right file's data.
+/// # Errors
+/// This function will only error if merging is not possible in some way, shape, or form. 
+fn merge_strings(mut left: String, mut right: String) -> Result<String, BabaError> {
     // get the set of Lua Functions from each file
     let lhs = funcs(&left);
     let rhs = funcs(&right);
@@ -55,7 +64,7 @@ fn merge_strings(mut left: String, mut right: String) -> String {
             left = left.replace(left_func.code(), "");
             right = right.replace(right_func.code(), "");
             // merge the functions
-            let new_func = merge_functions(left_func, right_func);
+            let new_func = merge_functions(left_func, right_func)?;
             // merge it onto the left file
             left.push_str(&new_func.code());
         }
@@ -63,11 +72,24 @@ fn merge_strings(mut left: String, mut right: String) -> String {
     // Now that all the issues have been ironed out,
     // we can concatenate the two files together
     // with no issues! hopefully
-    concat_strings(left, right)
+    Ok(concat_strings(left, right))
 }
 
 
 /// Merges two Lua Functions
-fn merge_functions(left: LuaFunction, right: LuaFunction) -> LuaFunction {
-    todo!()
+/// # Errors
+/// This errors under one of two circumstances:
+/// - The function could not be properly merged
+/// - After merging, for whatever reason, it was not considered a valid function
+fn merge_functions(left: LuaFunction, right: LuaFunction) -> Result<LuaFunction, BabaError> {
+    let mut result = String::new();
+    for line in diff_lines(left.code(), right.code()) {
+        match line {
+            // TODO: figure out how this works
+            Diff::Left(_) => todo!(),
+            Diff::Both(_, _) => todo!(),
+            Diff::Right(_) => todo!(),
+        }
+    }
+    Ok(result.parse()?)
 }

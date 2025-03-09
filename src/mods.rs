@@ -194,6 +194,9 @@ impl FromStr for LuaFunctionDefinition {
             .split(' ')
             .nth(1)
             .ok_or(ModdingError::NotALuaFunction)?
+            .split('(')
+            .next()
+            .ok_or(ModdingError::NotALuaFunction)?
             .to_owned();
         let is_baba_native = baba_function_names().contains(&name);
         let function = LuaFunctionDefinition {
