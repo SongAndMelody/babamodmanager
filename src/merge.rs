@@ -27,20 +27,13 @@ fn merge_strings(mut left: String, mut right: String) -> String {
 
     // otherwise, grab the intersections
     let intersections = lhs.intersection(&rhs);
-    // and also whether any of them are baba functions
-    let mut has_baba_native = false;
-    for item in intersections {
-        has_baba_native |= item.is_baba_native();
-    }
-    // if none of them are baba native...
-    if !has_baba_native {
-        // it's a matter of function renaming
-        // grab the intersections again
-        let intersections = lhs.intersection(&rhs);
-        // then iterate over each one
-        for item in intersections {
+    // iterate over them
+    for func in intersections {
+        // if it is not native to baba...
+        if !func.is_baba_native() {
+            // we rename the function
             // grab its name
-            let name = item.name();
+            let name = func.name();
             // create new names for the left and right hand sides
             let mut left_func = name.clone();
             left_func.push_str(LEFT_HAND_SUFFIX);
@@ -49,19 +42,11 @@ fn merge_strings(mut left: String, mut right: String) -> String {
             // replace each instance of the function call in the files with the new name
             left = left.replace(&name, &left_func);
             right = right.replace(&name, &right_func);
-        }
-        // then we can concatenate them and return it
-        return concat_strings(left, right);
-    }
+        } else {
+            // it IS native to baba
 
-    // otherwise, we do have some baba native functions,
-    // which need merging
-    // we snag the list of functions from each file
-    let mut lhs_funcs = string_to_function_strings(&left);
-    let mut rhs_funcs = string_to_function_strings(&right);
-    // sort them by name
-    lhs_funcs.sort_by(|left, right| left.code().cmp(right.code()));
-    rhs_funcs.sort_by(|left, right| left.code().cmp(right.code()));
+        }
+    }
 
     todo!()
 }
