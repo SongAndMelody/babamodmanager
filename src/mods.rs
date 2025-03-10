@@ -1,8 +1,10 @@
 use std::{
-    collections::HashSet,
+    collections::{HashMap, HashSet},
+    convert::Infallible,
     ffi::OsStr,
     fs::{self, read_to_string},
-    path::PathBuf, str::FromStr,
+    path::PathBuf,
+    str::FromStr,
 };
 
 use serde::{Deserialize, Serialize};
@@ -164,7 +166,7 @@ pub enum ModdingError {
     /// The specified file was not a config file
     NotAConfigFile,
     /// The specified string could not be parsed into a function
-    NotALuaFunction
+    NotALuaFunction,
 }
 
 // A Lua function used in either a baba mod, or baba is you
@@ -207,20 +209,26 @@ impl FromStr for LuaFunctionDefinition {
     }
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LuaFunction {
     definition: LuaFunctionDefinition,
-    code: String
+    code: String,
 }
 
 impl LuaFunction {
     /// Creates a [`LuaFunction`] from a definition and code.
     /// Note that this can be the whole code file, and it only picks out
     /// the one function.
-    /// 
+    ///
     /// May return [`None`] if the provided code does not have the value.
-    pub fn from_definition_and_code(definition: &LuaFunctionDefinition, code: &str) -> Option<Self> {
+    pub fn from_definition_and_code(
+        definition: &LuaFunctionDefinition,
+        code: &str,
+    ) -> Option<Self> {
         let functions = string_to_function_strings(code);
-        functions.into_iter().find(|func| func.definition == *definition)
+        functions
+            .into_iter()
+            .find(|func| func.definition == *definition)
     }
     pub fn code(&self) -> &str {
         &self.code
@@ -239,11 +247,121 @@ impl FromStr for LuaFunction {
     }
 }
 
-/// Returns whether or not the [`PathBuf`] is a 
+/// A representation of an entire lua file.
+///
+/// Best to create this via parsing a [`String`],
+/// or using a [`From`] implementation.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LuaFile {
+    /// The set of functions (code included)
+    functions: Vec<LuaFunction>,
+    /// A dictionary of renamed, baba native functions
+    /// - Key: the original baba function
+    /// - Value: the renamed function
+    renamed_functions: HashMap<String, String>,
+    /// The entire code (unaltered)
+    code: String,
+}
+
+impl LuaFile {
+    /// Returns the whole code of the file.
+    ///
+    /// This is from tip to tail, including things not relevant
+    /// to the program
+    pub fn code(&self) -> String {
+        self.code.clone()
+    }
+    /// Returns the set of function definitions.
+    ///
+    /// This is merely for quicker use in deciding function
+    /// collissions, for better working with functions, use
+    /// [`LuaFile::functions`].
+    pub fn definitions(&self) -> HashSet<LuaFunctionDefinition> {
+        self.functions()
+            .into_iter()
+            .map(|func| func.definition)
+            .collect()
+    }
+    /// Returns a list of functions in the file.
+    ///
+    /// These functions are in a more workable format, they can be edited,
+    /// altered, etc. You can merge two functions with [`crate::merge::merge_functions`].
+    pub fn functions(&self) -> Vec<LuaFunction> {
+        self.functions.clone()
+    }
+    /// Returns a dictionary of renamed functions (for the purposes of the injection method).
+    ///
+    /// The keys are the old names (see [`baba_function_names`]), and the
+    /// values are the new names.
+    ///
+    /// Supports these kinds of syntax (on structure creation):
+    /// - `local new_name = old_name`
+    /// - `new_name = old_name`
+    pub fn renamed_functions(&self) -> HashMap<String, String> {
+        self.renamed_functions.clone()
+    }
+    /// Returns whether a specified function uses injection.
+    ///
+    /// This checks whether the name of the definition is found in either
+    /// the keys or the values (so it can check either the old or new name)
+    pub fn function_uses_injection(&self, func: &LuaFunctionDefinition) -> bool {
+        self.renamed_functions.contains_key(&func.name)
+            || self
+                .renamed_functions
+                .values()
+                .fold(false, |prev, y| prev || *y == func.name)
+    }
+}
+
+impl FromStr for LuaFile {
+    type Err = Infallible;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let functions = string_to_function_strings(s);
+        // for the renamed functions, they look like this:
+        // local new = old
+        // new = old
+        let mut renamed_functions = HashMap::new();
+        'outer: for line in s.lines() {
+            for name in baba_function_names() {
+                if line.contains(&name) && !line.contains("function") {
+                    // removing the `local`
+                    let line = line.replace("local", "");
+                    let rename = line.split('=').next().unwrap_or("RENAME_NOT_FOUND");
+                    // the replace removes spaces so it's just the name
+                    renamed_functions.insert(name, rename.to_owned().replace(' ', ""));
+                }
+            }
+        }
+        Ok(Self {
+            functions,
+            renamed_functions,
+            code: s.to_owned(),
+        })
+    }
+}
+
+impl From<String> for LuaFile {
+    fn from(value: String) -> Self {
+        value.parse().unwrap()
+    }
+}
+
+impl From<&str> for LuaFile {
+    fn from(value: &str) -> Self {
+        value.parse().unwrap()
+    }
+}
+
+/// Returns whether or not the [`PathBuf`] is a lua file
 fn is_lua_file(path: &PathBuf) -> bool {
     path.extension().map(OsStr::to_os_string) == Some("lua".into())
 }
 
+/// Procures a set of [`LuaFunctionDefinition`]s from a string.
+/// 
+/// This is only the definitions and related data, everything else in the
+/// string is ignored
 pub fn functions_from_string(str: &str) -> HashSet<LuaFunctionDefinition> {
     let mut result = HashSet::new();
     for line in str.lines() {
