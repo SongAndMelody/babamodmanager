@@ -167,6 +167,8 @@ pub enum ModdingError {
     NotAConfigFile,
     /// The specified string could not be parsed into a function
     NotALuaFunction,
+    /// While merging functions, the rename could not properly be specified
+    RenameError
 }
 
 // A Lua function used in either a baba mod, or baba is you
@@ -232,6 +234,9 @@ impl LuaFunction {
     }
     pub fn code(&self) -> &str {
         &self.code
+    }
+    pub fn definition(&self) -> LuaFunctionDefinition {
+        self.definition.clone()
     }
 }
 
@@ -303,13 +308,33 @@ impl LuaFile {
     /// Returns whether a specified function uses injection.
     ///
     /// This checks whether the name of the definition is found in either
-    /// the keys or the values (so it can check either the old or new name)
+    /// the keys or the values (so it can check either the old or new name).
+    /// 
+    /// This takes a reference to a [`LuaFunctionDefinition`] - for more
+    /// generalized use see [`LuaFile::function_uses_injection_str`].
     pub fn function_uses_injection(&self, func: &LuaFunctionDefinition) -> bool {
-        self.renamed_functions.contains_key(&func.name)
+        self.function_uses_injection_str(&func.name)
+    }
+
+    /// Returns whether a specified function uses injection.
+    ///
+    /// This checks whether the name of the definition is found in either
+    /// the keys or the values (so it can check either the old or new name).
+    /// 
+    /// This takes a `&str` for generalized use.
+    pub fn function_uses_injection_str(&self, func_name: &str) -> bool {
+        self.renamed_functions.contains_key(func_name)
             || self
                 .renamed_functions
                 .values()
-                .fold(false, |prev, y| prev || *y == func.name)
+                .fold(false, |prev, y| prev || *y == func_name)
+    }
+
+    /// Grabs the renamed function for a given definition, if it exists.
+    /// 
+    /// Returns [`None`] if the rename doesn't exist.
+    pub fn injection_data(&self, func: &LuaFunctionDefinition) -> Option<String> {
+        self.renamed_functions.get(&func.name()).map(Clone::clone)
     }
 }
 
@@ -408,7 +433,9 @@ pub fn string_to_function_strings(file: &str) -> Vec<LuaFunction> {
 }
 
 /// Concatenates two strings, putting the second at the end of the first.
+/// A line break is added before the new string.
 pub fn concat_strings(mut left: String, right: String) -> String {
+    left.push('\n');
     left.push_str(&right);
     left
 }
