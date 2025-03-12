@@ -10,6 +10,8 @@ mod merge;
 
 use eframe::{self, NativeOptions};
 
+/// The name used by the window.
+/// If you've forked this repository, you can change this to indicate so.
 const APP_NAME: &str = "Baba Mods Manager";
 
 fn main() -> eframe::Result {

@@ -76,6 +76,7 @@ fn can_parse_config() {
       "tags": ["Technical", "Work In Progress"],
       "links": ["[You can put links here to forward people to the right places]", "[You can have multiple!]"],
       "files": ["[This is a list of files that are considered part of the mod, and are moved with it when requested]"],
+      "init": "[The file used outside of the folder, if needed.]",
       "sprites": ["[This is a set of sprites the mod uses]"]
     });
     let value = Config::from_json(json);

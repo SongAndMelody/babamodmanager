@@ -27,7 +27,11 @@ pub struct BabaMod {
 }
 
 impl BabaMod {
-    /// Create a new BabaMod from the path to either the directory, or the file
+    /// Create a new BabaMod from the path to either the directory, or the file that exists at the location.
+    /// 
+    /// # Errors
+    /// Errors are tossed out - if the name is invalid, the name of the mod is set to `"[Invalid Name!]"`,
+    /// and if no name is given, the name of the mod is set to `"[No name Given!]"`. 
     pub fn new(path: PathBuf) -> Self {
         let name = path
             .file_name()
@@ -44,7 +48,7 @@ impl BabaMod {
         self.path.extension().is_some()
     }
 
-    /// Returns whether this BabaMod has a config file associated with it
+    /// Returns whether this mod has a config file associated with it.
     pub fn has_config(&self) -> bool {
         self.config.is_some()
     }
@@ -71,8 +75,10 @@ impl BabaMod {
         result
     }
 
-    /// Returns a set of functions that the mod overrides
-    pub fn overriden_functions(&self) -> HashSet<LuaFunctionDefinition> {
+    /// Returns a set of functions that the mod defines.
+    /// This is a [`HashSet`] of [`LuaFuncDef`]s, best for comparing
+    /// this mod against another.
+    pub fn defined_functions(&self) -> HashSet<LuaFuncDef> {
         let mut result = HashSet::new();
         let iter = self.all_relevant_files().into_iter().filter(is_lua_file);
         for file in iter {
@@ -99,10 +105,10 @@ impl BabaMod {
     }
 
     /// Returns whether this mod is compatible with another mod
-    /// via way of function overrides & sprite checks
+    /// via way of function overrides & sprite checks.
     pub fn is_compatible_with(&self, other: &Self) -> bool {
-        self.overriden_functions()
-            .is_disjoint(&other.overriden_functions())
+        self.defined_functions()
+            .is_disjoint(&other.defined_functions())
             && self
                 .sprites_by_name()
                 .unwrap_or_default()
@@ -111,7 +117,10 @@ impl BabaMod {
 }
 
 /// Represents a configuration file for a mod, unique to the manager.
-/// this also represents a mod that could be fetched from elsewhere
+/// This also represents a mod that could be fetched from elsewhere.
+/// 
+/// # Notes
+/// 
 #[derive(serde::Serialize, serde::Deserialize, Debug, Default, Clone)]
 pub struct Config {
     /// The mod ID, used for compatibilities
@@ -121,9 +130,9 @@ pub struct Config {
     /// The description of the mod
     description: String,
     /// A url for an icon (Optional)
-    icon_url: String,
+    icon_url: Option<String>,
     /// A url for a banner (Optional)
-    banner_url: String,
+    banner_url: Option<String>,
     /// whether or not the mod is global
     global: bool,
     /// the set of associated tags (max of four)
@@ -132,13 +141,14 @@ pub struct Config {
     links: Vec<String>,
     /// A list of all files that belong to the mod
     files: Vec<String>,
+    /// The init file (outside the folder)
+    init: Option<String>,
     /// A list of sprites that belong to the mod
     sprites: Vec<String>,
 }
 
 impl Config {
-    /// tries to find a config file from the given path
-    /// (should end in [CONFIG_FILE_NAME])
+    /// Tries to find a config file, given a path to it.
     pub fn new(path: PathBuf) -> Result<Self, BabaError> {
         if !path.ends_with(CONFIG_FILE_NAME) {
             return Err(BabaError::ModdingError(ModdingError::NotAConfigFile));
@@ -178,12 +188,12 @@ pub enum ModdingError {
 
 // A Lua function used in either a baba mod, or baba is you
 #[derive(Debug, Serialize, Deserialize, Hash, PartialEq, Eq, Clone)]
-pub struct LuaFunctionDefinition {
+pub struct LuaFuncDef {
     name: String,
     is_baba_native: bool,
 }
 
-impl LuaFunctionDefinition {
+impl LuaFuncDef {
     pub fn is_baba_native(&self) -> bool {
         self.is_baba_native
     }
@@ -192,7 +202,7 @@ impl LuaFunctionDefinition {
     }
 }
 
-impl FromStr for LuaFunctionDefinition {
+impl FromStr for LuaFuncDef {
     type Err = ModdingError;
 
     fn from_str(line: &str) -> Result<Self, Self::Err> {
@@ -208,7 +218,7 @@ impl FromStr for LuaFunctionDefinition {
             .ok_or(ModdingError::NotALuaFunction)?
             .to_owned();
         let is_baba_native = baba_function_names().contains(&name);
-        let function = LuaFunctionDefinition {
+        let function = LuaFuncDef {
             name,
             is_baba_native,
         };
@@ -218,7 +228,7 @@ impl FromStr for LuaFunctionDefinition {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct LuaFunction {
-    definition: LuaFunctionDefinition,
+    definition: LuaFuncDef,
     code: String,
 }
 
@@ -229,7 +239,7 @@ impl LuaFunction {
     ///
     /// May return [`None`] if the provided code does not have the value.
     pub fn from_definition_and_code(
-        definition: &LuaFunctionDefinition,
+        definition: &LuaFuncDef,
         code: &str,
     ) -> Option<Self> {
         let functions = string_to_function_strings(code);
@@ -240,7 +250,7 @@ impl LuaFunction {
     pub fn code(&self) -> &str {
         &self.code
     }
-    pub fn definition(&self) -> LuaFunctionDefinition {
+    pub fn definition(&self) -> LuaFuncDef {
         self.definition.clone()
     }
 }
@@ -286,7 +296,7 @@ impl LuaFile {
     /// This is merely for quicker use in deciding function
     /// collissions, for better working with functions, use
     /// [`LuaFile::functions`].
-    pub fn definitions(&self) -> HashSet<LuaFunctionDefinition> {
+    pub fn definitions(&self) -> HashSet<LuaFuncDef> {
         self.functions()
             .into_iter()
             .map(|func| func.definition)
@@ -315,9 +325,9 @@ impl LuaFile {
     /// This checks whether the name of the definition is found in either
     /// the keys or the values (so it can check either the old or new name).
     /// 
-    /// This takes a reference to a [`LuaFunctionDefinition`] - for more
+    /// This takes a reference to a [`LuaFuncDef`] - for more
     /// generalized use see [`LuaFile::function_uses_injection_str`].
-    pub fn function_uses_injection(&self, func: &LuaFunctionDefinition) -> bool {
+    pub fn function_uses_injection(&self, func: &LuaFuncDef) -> bool {
         self.function_uses_injection_str(&func.name)
     }
 
@@ -335,7 +345,7 @@ impl LuaFile {
     /// Grabs the renamed function for a given definition, if it exists.
     /// 
     /// Returns [`None`] if the rename doesn't exist.
-    pub fn injection_data(&self, func: &LuaFunctionDefinition) -> Option<String> {
+    pub fn injection_data(&self, func: &LuaFuncDef) -> Option<String> {
         self.renamed_functions.get(&func.name()).map(Clone::clone)
     }
 }
@@ -385,11 +395,11 @@ fn is_lua_file(path: &PathBuf) -> bool {
     path.extension().map(OsStr::to_os_string) == Some("lua".into())
 }
 
-/// Procures a set of [`LuaFunctionDefinition`]s from a string.
+/// Procures a set of [`LuaFuncDef`]s from a string.
 /// 
 /// This is only the definitions and related data, everything else in the
 /// string is ignored
-pub fn functions_from_string(str: &str) -> HashSet<LuaFunctionDefinition> {
+pub fn functions_from_string(str: &str) -> HashSet<LuaFuncDef> {
     let mut result = HashSet::new();
     for line in str.lines() {
         let Ok(function) = line.parse() else {

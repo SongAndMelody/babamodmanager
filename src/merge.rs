@@ -146,6 +146,8 @@ pub fn merge_functions(
                 merged.push_str(new_func.code());
             }
         }
+        // just to differentiate the functions
+        merged.push('\n');
     }
     // Now that all the issues have been ironed out,
     // we can concatenate the two files together

@@ -52,7 +52,7 @@ impl Levelpack {
     /// # Errors
     /// This function may error if:
     /// - The given path does not exist ([`LevelpackError::LevelpackDoesNotExist`])
-    /// - There was an issue opening the `world`
+    /// - There was an issue opening the `world_data.txt`
     pub fn new(path: PathBuf) -> Result<Self, BabaError> {
         // if the levelpack doesn't exist, return early
         if !fs::exists(path.clone())? {
@@ -135,7 +135,8 @@ impl Levelpack {
         Ok(result)
     }
 
-    /// Gets the path of a [`LevelpackFile`]
+    /// Gets the path of a [`LevelpackFile`].
+    /// This is generaly an absolute path rather than a relative one.
     pub fn pack_file(&self, file: LevelpackFile) -> PathBuf {
         let joiner: String = file.into();
         self.path.join(joiner)
