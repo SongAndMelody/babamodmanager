@@ -16,6 +16,12 @@ const LEFT_HAND_SUFFIX: &str = "_left";
 /// on the *right* hand side of the arguments
 const RIGHT_HAND_SUFFIX: &str = "_right";
 
+/// The mode used by [`DiffMatchPatch`].
+/// This can be one of two types:
+/// - [`diff_match_patch_rs::Compat`] - return types deal with [`char`]s and slices thereof.
+/// - [`diff_match_patch_rs::Efficient`] - return types deal exclusively in `&[u8]` slices.
+type DiffMode = diff_match_patch_rs::Compat;
+
 /// Attempts to merge two [`LuaFile`]s.
 /// # Semantics
 /// - The order of parameters matter - the two files are merged into one, with the
@@ -28,7 +34,34 @@ const RIGHT_HAND_SUFFIX: &str = "_right";
 /// then merged data, then the right file's data.
 /// # Errors
 /// This function will only error if merging is not possible in some way, shape, or form.
-fn merge_strings(mut left_file: LuaFile, mut right_file: LuaFile) -> Result<LuaFile, BabaError> {
+/// ## Override vs Injection
+/// When it comes to baba modding, there are two ways to replace a function native to baba.
+/// While they are unnamed, the first way is known to this program as the "override" method.
+/// This is done via copying the function's code from the game and tweaking the function
+/// to include your own code.
+/// It looks something like this:
+/// ```lua
+/// function init(args...)
+///     -- game code
+///     do_something()
+///     -- more game code
+/// end
+/// ```
+///
+/// The second method is known as the "injection" method. This is done by copying the function
+/// via way of creating a variable that holds the copy in the code, and then calling the old function
+/// inside a new function that overwrites the original. It looks something like this:
+/// ```lua
+/// local oldinit = init
+/// function init(args...)
+///     do_something()
+///     init(args...)
+/// end
+/// ```
+/// This is generally used as a way to make mod merging easier. Nontheless, this function
+/// supports both types of function replacement, and can also work via mix-and-matching with
+/// a custom merging solution (via way of including both the modified code, and the injection function).
+fn merge_functions(mut left_file: LuaFile, mut right_file: LuaFile, baba_funcs: Vec<LuaFunction>) -> Result<LuaFile, BabaError> {
     let mut left = left_file.code();
     let mut right = right_file.code();
     let mut merged = String::new();
@@ -69,33 +102,40 @@ fn merge_strings(mut left_file: LuaFile, mut right_file: LuaFile) -> Result<LuaF
             right = right.replace(right_func.code(), "");
             // check: we want to ensure that no functions are merged if only one function
             // uses the injection method
-            let injection_check = left_file.function_uses_injection(&left_func.definition())
-                ^ right_file.function_uses_injection(&right_func.definition());
-            if injection_check {
-                let (injected, not_injected, rename) =
-                    if left_file.function_uses_injection(&left_func.definition()) {
-                        (left_func, right_func, left_file.injection_data(func))
-                    } else {
-                        (right_func, left_func, right_file.injection_data(func))
+            match (
+                left_file.function_uses_injection(&left_func.definition()),
+                right_file.function_uses_injection(&right_func.definition()),
+            ) {
+                // both functions use the injection method
+                (true, true) => todo!(),
+                // only one function uses the injection method
+                (true, false) | (false, true) => {
+                    let (injected, not_injected, rename) =
+                        if left_file.function_uses_injection(&left_func.definition()) {
+                            (left_func, right_func, left_file.injection_data(func))
+                        } else {
+                            (right_func, left_func, right_file.injection_data(func))
+                        };
+                    // The non-injected version needs to go first
+                    merged.push_str(not_injected.code());
+                    // then we add the variable definition that allows the
+                    // injected version to work
+                    let Some(rename) = rename else {
+                        return Err(ModdingError::RenameError)?;
                     };
-                // The non-injected version needs to go first
-                merged.push_str(not_injected.code());
-                // then we add the variable definition that allows the
-                // injected version to work
-                let Some(rename) = rename else {
-                    return Err(ModdingError::RenameError)?;
-                };
-                let name = func.name();
-                let line = format!("local {} = {}", rename, name);
-                merged.push('\n');
-                merged.push_str(&line);
-                // then we add the injection version of the function
-                merged.push('\n');
-                merged.push_str(injected.code());
-            } else {
-                // Otherwise, we can merge the functions like normal.
-                let new_func = merge_functions(left_func, right_func)?;
-                merged.push_str(new_func.code());
+                    let name = func.name();
+                    let line = format!("local {} = {}", rename, name);
+                    merged.push('\n');
+                    merged.push_str(&line);
+                    // then we add the injection version of the function
+                    merged.push('\n');
+                    merged.push_str(injected.code());
+                }
+                // neither function uses the injection method
+                (false, false) => {
+                    let new_func = merge_override_functions(left_func, right_func, baba_funcs.clone())?;
+                    merged.push_str(new_func.code());
+                }
             }
         }
     }
@@ -110,14 +150,31 @@ fn merge_strings(mut left_file: LuaFile, mut right_file: LuaFile) -> Result<LuaF
     Ok(result.into())
 }
 
-/// Merges two Lua Functions
+/// Merges two Lua Functions.
+/// # Prereqs
+/// - Both functions should be checked beforehand to ensure they do not use the injection method.
+/// - Additionally, both functions should have the same [`crate::mods::LuaFunctionDefinition`].
+///
 /// # Errors
-/// This errors under one of two circumstances:
+/// This errors under a couple circumstances:
 /// - The function could not be properly merged
+/// - Either set of code removes code form the original function its based on
 /// - After merging, for whatever reason, it was not considered a valid function
-pub fn merge_functions(left: LuaFunction, right: LuaFunction) -> Result<LuaFunction, BabaError> {
+pub fn merge_override_functions(left: LuaFunction, right: LuaFunction, baba_funcs: Vec<LuaFunction>) -> Result<LuaFunction, BabaError> {
+    let original = baba_funcs.iter().find(|&func| func.definition() == left.definition()).ok_or(ModdingError::NotABabaFunction)?.clone();
+    use diff_match_patch_rs::Ops;
     let mut result = String::new();
     let dmp = DiffMatchPatch::new();
-    todo!("figure out the merging semantics");
+    // grab the diffs
+    let diffs_left = dmp.diff_main::<DiffMode>(original.code(), left.code())?;
+    let diffs_right = dmp.diff_main::<DiffMode>(original.code(), right.code())?;
+    for diff in diffs_left.iter().chain(diffs_right.iter()) {
+        match diff.op() {
+            // In the case of removal, we want to immediately quit
+            // since mods that remove code probably don't want to be merged
+            Ops::Delete => return Err(BabaError::ModdingError(ModdingError::CodeRemoval)),
+            Ops::Equal | Ops::Insert => continue,
+        }
+    }
     Ok(result.parse()?)
 }

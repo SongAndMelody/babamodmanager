@@ -12,7 +12,15 @@ pub enum BabaError {
     /// There was an error when fetching or working with mods
     ModdingError(ModdingError),
     /// There was an error when parsing json
-    SerdeJsonError(serde_json::Error)
+    SerdeJsonError(serde_json::Error),
+    /// There was an error when using Diff-Match-Patch
+    DmpError(diff_match_patch_rs::Error)
+}
+
+impl From<diff_match_patch_rs::Error> for BabaError {
+    fn from(v: diff_match_patch_rs::Error) -> Self {
+        Self::DmpError(v)
+    }
 }
 
 impl From<LevelpackError> for BabaError {

@@ -168,7 +168,12 @@ pub enum ModdingError {
     /// The specified string could not be parsed into a function
     NotALuaFunction,
     /// While merging functions, the rename could not properly be specified
-    RenameError
+    RenameError,
+    /// While merging functions, the given function was not a baba function,
+    /// despite having been declared one
+    NotABabaFunction,
+    /// While merging functions, code was removed
+    CodeRemoval
 }
 
 // A Lua function used in either a baba mod, or baba is you
@@ -211,7 +216,7 @@ impl FromStr for LuaFunctionDefinition {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct LuaFunction {
     definition: LuaFunctionDefinition,
     code: String,
@@ -317,9 +322,6 @@ impl LuaFile {
     }
 
     /// Returns whether a specified function uses injection.
-    ///
-    /// This checks whether the name of the definition is found in either
-    /// the keys or the values (so it can check either the old or new name).
     /// 
     /// This takes a `&str` for generalized use.
     pub fn function_uses_injection_str(&self, func_name: &str) -> bool {
