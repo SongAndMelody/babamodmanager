@@ -34,6 +34,11 @@ type DiffMode = diff_match_patch_rs::Compat;
 /// then merged data, then the right file's data.
 /// # Errors
 /// This function will only error if merging is not possible in some way, shape, or form.
+/// Specifics:
+/// - Will return [`ModdingError::RenameError`] if, while attempting to merge an Injected and Overridden mod
+/// (see below), the dictionary of renamed variables was not properly set in the mod with the injected function.
+/// - Will return [`BabaError::DmpError`] as per the specifications of [`merge_override_functions`] or [`merge_injected_functions`],
+/// depending on whether both mods use the Override or Injection method.
 /// ## Override vs Injection
 /// When it comes to baba modding, there are two ways to replace a function native to baba.
 /// While they are unnamed, the first way is known to this program as the "override" method.
@@ -107,7 +112,7 @@ pub fn merge_functions(
         right = right.replace(right_func.code(), "");
         // check: we want to ensure that no functions are merged if only one function
         // uses the injection method
-        match (
+        let new_func = match (
             left_file.function_uses_injection(&left_func.definition()),
             right_file.function_uses_injection(&right_func.definition()),
         ) {
@@ -134,19 +139,19 @@ pub fn merge_functions(
                 // then we add the injection version of the function
                 merged.push('\n');
                 merged.push_str(injected.code());
+                continue;
             }
             // neither function uses the injection method
             (false, false) => {
-                let new_func = merge_override_functions(left_func, right_func, &baba_funcs)?;
-                merged.push_str(new_func.code());
+                merge_override_functions(left_func, right_func, &baba_funcs)?
             }
             // both functions use the injection method
             (true, true) => {
-                let new_func = merge_injected_functions(left_func, right_func, &baba_funcs)?;
-                merged.push_str(new_func.code());
+                merge_injected_functions(left_func, right_func, &baba_funcs)?
             }
-        }
-        // just to differentiate the functions
+        };
+        merged.push('\n');
+        merged.push_str(new_func.code());
         merged.push('\n');
     }
     // Now that all the issues have been ironed out,
