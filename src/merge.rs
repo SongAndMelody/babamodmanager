@@ -92,58 +92,58 @@ pub fn merge_functions(
             // replace each instance of the function call in the files with the new name
             left = left.replace(&name, &left_func);
             right = right.replace(&name, &right_func);
-        } else {
-            // it IS native to baba
-            // grab the functions from each file
-            let lhs = LuaFunction::from_definition_and_code(func, &left);
-            let rhs = LuaFunction::from_definition_and_code(func, &right);
-            let (Some(left_func), Some(right_func)) = (lhs, rhs) else {
-                continue;
-            };
-            // remove the code from the files
-            // We'll be appending it later to the merged section
-            left = left.replace(left_func.code(), "");
-            right = right.replace(right_func.code(), "");
-            // check: we want to ensure that no functions are merged if only one function
-            // uses the injection method
-            match (
-                left_file.function_uses_injection(&left_func.definition()),
-                right_file.function_uses_injection(&right_func.definition()),
-            ) {
-                // only one function uses the injection method
-                (true, false) | (false, true) => {
-                    // this binding ensures that `injected` is *always* the injected method
-                    let (injected, not_injected, rename) =
-                        if left_file.function_uses_injection(&left_func.definition()) {
-                            (left_func, right_func, left_file.injection_data(func))
-                        } else {
-                            (right_func, left_func, right_file.injection_data(func))
-                        };
-                    // The non-injected version needs to go first
-                    merged.push_str(not_injected.code());
-                    // then we add the variable definition that allows the
-                    // injected version to work
-                    let Some(rename) = rename else {
-                        return Err(ModdingError::RenameError)?;
+            continue;
+        }
+        // it IS native to baba
+        // grab the functions from each file
+        let lhs = LuaFunction::from_definition_and_code(func, &left);
+        let rhs = LuaFunction::from_definition_and_code(func, &right);
+        let (Some(left_func), Some(right_func)) = (lhs, rhs) else {
+            continue;
+        };
+        // remove the code from the files
+        // We'll be appending it later to the merged section
+        left = left.replace(left_func.code(), "");
+        right = right.replace(right_func.code(), "");
+        // check: we want to ensure that no functions are merged if only one function
+        // uses the injection method
+        match (
+            left_file.function_uses_injection(&left_func.definition()),
+            right_file.function_uses_injection(&right_func.definition()),
+        ) {
+            // only one function uses the injection method
+            (true, false) | (false, true) => {
+                // this binding ensures that `injected` is *always* the injected method
+                let (injected, not_injected, rename) =
+                    if left_file.function_uses_injection(&left_func.definition()) {
+                        (left_func, right_func, left_file.injection_data(func))
+                    } else {
+                        (right_func, left_func, right_file.injection_data(func))
                     };
-                    let name = func.name();
-                    let line = format!("local {} = {}", rename, name);
-                    merged.push('\n');
-                    merged.push_str(&line);
-                    // then we add the injection version of the function
-                    merged.push('\n');
-                    merged.push_str(injected.code());
-                }
-                // neither function uses the injection method
-                (false, false) => {
-                    let new_func = merge_override_functions(left_func, right_func, &baba_funcs)?;
-                    merged.push_str(new_func.code());
-                }
-                // both functions use the injection method
-                (true, true) => {
-                    let new_func = merge_injected_functions(left_func, right_func, &baba_funcs)?;
-                    merged.push_str(new_func.code());
-                }
+                // The non-injected version needs to go first
+                merged.push_str(not_injected.code());
+                // then we add the variable definition that allows the
+                // injected version to work
+                let Some(rename) = rename else {
+                    return Err(ModdingError::RenameError)?;
+                };
+                let name = func.name();
+                let line = format!("local {} = {}", rename, name);
+                merged.push('\n');
+                merged.push_str(&line);
+                // then we add the injection version of the function
+                merged.push('\n');
+                merged.push_str(injected.code());
+            }
+            // neither function uses the injection method
+            (false, false) => {
+                let new_func = merge_override_functions(left_func, right_func, &baba_funcs)?;
+                merged.push_str(new_func.code());
+            }
+            // both functions use the injection method
+            (true, true) => {
+                let new_func = merge_injected_functions(left_func, right_func, &baba_funcs)?;
+                merged.push_str(new_func.code());
             }
         }
     }
