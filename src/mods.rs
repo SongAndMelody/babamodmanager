@@ -14,7 +14,7 @@ use crate::error::BabaError;
 
 /// The name of the config file.
 /// This should be located inside of the mod folder (i.e. `Lua\[mod]\[this value]`)
-const CONFIG_FILE_NAME: &str = "Config.js";
+const CONFIG_FILE_NAME: &str = "Config.json";
 
 /// Represents a Mod in Baba is You
 #[derive(Debug)]
@@ -384,7 +384,7 @@ impl LuaFile {
     /// Returns a list of functions in the file.
     ///
     /// These functions are in a more workable format, they can be edited,
-    /// altered, etc. You can merge two functions with [`crate::merge::merge_functions`].
+    /// altered, etc. You can merge two functions with [`crate::merge::merge_files`].
     pub fn functions(&self) -> Vec<LuaFunction> {
         self.functions.clone()
     }

@@ -18,7 +18,7 @@ Set up your mod like so in the file system:
 
 `YourMod_init.lua` should call into the mod files inside the `YourMod` directory. You can then add data to `Config.json` to spruce up the mod in the manager. You can use this as a template:
 
-```js
+```json
 {
     "modid": "dummytest", // String
     "authors": ["Author A", "Author B"], // [String]

@@ -64,11 +64,21 @@ type DiffMode = diff_match_patch_rs::Compat;
 /// This is generally used as a way to make mod merging easier. Nontheless, this function
 /// supports both types of function replacement, and can also work via mix-and-matching with
 /// a custom merging solution (via way of including both the modified code, and the injection function).
+/// ## Unsupported Function Declarations
+/// Any of the following are not supported, but can be easily refactored into either one of the other two.
+/// ```lua
+/// -- "Direct Injection"
+/// menufuncs.[menu].enter = function(args...)
+///     -- This can be easily refactored into a proper form
+///     -- via moving the `function` to the start
+///     -- `function menufuncs.[menu].enter(args...)`
+/// end
+/// ```
 #[must_use]
 pub fn merge_files(
     left_file: LuaFile,
     right_file: LuaFile,
-    baba_funcs: Vec<LuaFunction>,
+    baba_funcs: &[LuaFunction],
 ) -> Result<LuaFile, BabaError> {
     let mut left = left_file.code();
     let mut right = right_file.code();
@@ -141,7 +151,7 @@ pub fn merge_files(
                 continue;
             }
             // neither function uses the injection method
-            (false, false) => merge_override_functions(left_func, right_func, &baba_funcs)?,
+            (false, false) => merge_override_functions(left_func, right_func, baba_funcs)?,
             // both functions use the injection method
             (true, true) => merge_injected_functions(left_func, right_func)?,
         };
@@ -165,7 +175,7 @@ pub fn merge_files(
 /// Merges two Lua Functions, assuming both are override functions.
 /// # Prereqs
 /// - Both functions should be checked beforehand to ensure they do not use the injection method.
-/// - Additionally, both functions should have the same [`crate::mods::LuaFunctionDefinition`].
+/// - Additionally, both functions should have the same [`crate::mods::LuaFuncDef`].
 /// - The third parameter should have at least one [`LuaFunction`] that has the same definition
 /// as the other two
 ///
@@ -208,7 +218,7 @@ pub fn merge_override_functions(
 /// Merges two Lua Functions, assuming both are injected functions.
 /// # Prereqs
 /// - Both functions should be checked beforehand to ensure they do not use the override method.
-/// - Additionally, both functions should have the same [`crate::mods::LuaFunctionDefinition`].
+/// - Additionally, both functions should have the same [`crate::mods::LuaFuncDef`].
 /// - The third parameter should have at least one [`LuaFunction`] that has the same definition
 /// as the other two
 ///
@@ -259,14 +269,14 @@ fn merge_functions_via_dmp(
 
 /// Merges two mods, creating a new one
 pub fn merge_mods(
-    left: &BabaMod,
-    right: &BabaMod,
-    funcs: Vec<LuaFunction>,
+    _left: &BabaMod,
+    _right: &BabaMod,
+    _funcs: Vec<LuaFunction>,
 ) -> Result<BabaMod, BabaError> {
     todo!()
 }
 
-fn config_from_two_mods(left: &BabaMod, right: &BabaMod) -> Result<Config, BabaError> {
+fn config_from_two_mods(left: &BabaMod, right: &BabaMod) -> Config {
     let id = concat_strings(left.mod_id(), right.mod_id()).replace('\n', "");
     let left_name = left.name();
     let right_name = right.name();
@@ -287,12 +297,13 @@ fn config_from_two_mods(left: &BabaMod, right: &BabaMod) -> Result<Config, BabaE
         "banner_url": "",
         "global": false,
         "tags": ["Auto-generated", "Merged"],
-        "links": ["[Intentionally left without links, see data/!doc.md]"],
-        "files": ["[Intentionally left without files, see data/!doc.md]"],
-        "init": format!("./{id}_init.lua"),
-        "sprites": ["[Intentionally left without names, see data/!doc.md]"]
+        "links": ["[Intentionally left without links]"],
+        "files": ["[Intentionally left without files]"],
+        "init": format!(".\\{id}_init.lua"),
+        "sprites": ["[Intentionally left without names]"]
     });
 
-    let result = serde_json::from_value(config)?;
-    Ok(result)
+    // this function *should not fail* so we should abort early if needed
+    let result = serde_json::from_value(config).unwrap();
+    result
 }
