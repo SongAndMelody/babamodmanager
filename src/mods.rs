@@ -133,6 +133,35 @@ impl BabaMod {
                 .unwrap_or_default()
                 .is_disjoint(&other.sprites_by_name().unwrap_or_default())
     }
+
+    /// Gets the mod id, or if the config doesn't exist, gets the name instead
+    pub fn mod_id(&self) -> String {
+        match &self.config {
+            Some(config) => config.modid.clone(),
+            None => self.name.clone(),
+        }
+    }
+
+    /// Gets the list of authors, or if the config doesn't exist, returns an empty vector
+    pub fn authors(&self) -> Vec<String> {
+        match &self.config {
+            Some(config) => config.authors.clone(),
+            None => vec![],
+        }
+    }
+
+    /// Gets the name of the mod
+    pub fn name(&self) -> String {
+        self.name.clone()
+    }
+
+    /// Gets the description of the mod, or if the config doesn't exist, returns `"No description given..."`
+    pub fn description(&self) -> String {
+        match &self.config {
+            Some(config) => config.description.clone(),
+            None => "No description given...".to_owned(),
+        }
+    }
 }
 
 /// Represents a configuration file for a mod, unique to the manager.

@@ -11,13 +11,6 @@ This file, which contains the documentation for all the files in the data folder
 
 Contains a list of all 338 overridable Baba is You functions. These are used often, since the primary way to modify Baba is You is to override functions from the basegame.
 
-## Config.json
-
-This exists for two reasons:
-
-- A template to work off of for those wanting to make mods compatible with the mod manager (see the readme)
-- A template used when merging two functions - the file is copied and modified to allow compatibility with the mod manager for the newly merged mods.
-
 ## init.lua
 
 This file is similarly used when merging two mods, calling into a function in the directory for easy use.
