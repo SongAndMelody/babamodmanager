@@ -1,8 +1,8 @@
-use std::str::FromStr;
-
 use crate::{
     error::BabaError,
-    mods::{concat_strings, functions_from_string as funcs, LuaFile, LuaFunction, ModdingError},
+    mods::{
+        concat_strings, BabaMod, LuaFile, LuaFunction, ModdingError,
+    },
 };
 
 use diff_match_patch_rs::{DiffMatchPatch, PatchInput};
@@ -66,9 +66,10 @@ type DiffMode = diff_match_patch_rs::Compat;
 /// This is generally used as a way to make mod merging easier. Nontheless, this function
 /// supports both types of function replacement, and can also work via mix-and-matching with
 /// a custom merging solution (via way of including both the modified code, and the injection function).
-pub fn merge_functions(
-    mut left_file: LuaFile,
-    mut right_file: LuaFile,
+#[must_use]
+pub fn merge_files(
+    left_file: LuaFile,
+    right_file: LuaFile,
     baba_funcs: Vec<LuaFunction>,
 ) -> Result<LuaFile, BabaError> {
     let mut left = left_file.code();
@@ -142,13 +143,9 @@ pub fn merge_functions(
                 continue;
             }
             // neither function uses the injection method
-            (false, false) => {
-                merge_override_functions(left_func, right_func, &baba_funcs)?
-            }
+            (false, false) => merge_override_functions(left_func, right_func, &baba_funcs)?,
             // both functions use the injection method
-            (true, true) => {
-                merge_injected_functions(left_func, right_func, &baba_funcs)?
-            }
+            (true, true) => merge_injected_functions(left_func, right_func)?,
         };
         merged.push('\n');
         merged.push_str(new_func.code());
@@ -161,7 +158,7 @@ pub fn merge_functions(
 
     // Some final touch ups:
     // remove any instances of double line breaks
-    while (result.contains("\n\n")) {
+    while result.contains("\n\n") {
         result = result.replace("\n\n", "\n");
     }
     Ok(result.into())
@@ -207,7 +204,7 @@ pub fn merge_override_functions(
             Ops::Equal | Ops::Insert => continue,
         }
     }
-    merge_functions_via_dmp(left, right, original)
+    merge_functions_via_dmp(left, right)
 }
 
 /// Merges two Lua Functions, assuming both are injected functions.
@@ -226,17 +223,11 @@ pub fn merge_override_functions(
 pub fn merge_injected_functions(
     left: LuaFunction,
     right: LuaFunction,
-    baba_funcs: &[LuaFunction],
 ) -> Result<LuaFunction, BabaError> {
-    let original = baba_funcs
-        .iter()
-        .find(|&func| func.definition() == left.definition())
-        .ok_or(ModdingError::NotABabaFunction)?
-        .clone();
     // in this case, the injected functions are small enough to where
     // we don't need to check for deletion tokens
     // (they are removed anyways in the following function call)
-    merge_functions_via_dmp(left, right, original)
+    merge_functions_via_dmp(left, right)
 }
 
 /// Merges two lua functions, just by code
@@ -244,7 +235,6 @@ pub fn merge_injected_functions(
 fn merge_functions_via_dmp(
     left: LuaFunction,
     right: LuaFunction,
-    original: LuaFunction,
 ) -> Result<LuaFunction, BabaError> {
     use diff_match_patch_rs::Ops;
 
@@ -261,5 +251,19 @@ fn merge_functions_via_dmp(
     let patches = dmp.patch_make(PatchInput::new_text_diffs(left.code(), &diffs))?;
     // apply them
     let (result, flags) = dmp.patch_apply(&patches, left.code())?;
+    for flag in flags {
+        if !flag {
+            return Err(BabaError::ModdingError(ModdingError::IncompletePatching));
+        }
+    }
     Ok(result.parse()?)
+}
+
+/// Merges two mods, creating a new one 
+pub fn merge_mods(
+    left: &BabaMod,
+    right: &BabaMod,
+    funcs: Vec<LuaFunction>,
+) -> Result<BabaMod, BabaError> {
+    todo!()
 }

@@ -7,7 +7,7 @@ use crate::baba::BabaFiles;
 #[derive(Default, Debug, Serialize, Deserialize)]
 pub struct App {
     state: AppState,
-    options: AppOptions
+    options: AppOptions,
 }
 
 impl eframe::App for App {
@@ -32,6 +32,4 @@ pub enum AppState {
 }
 
 #[derive(Default, Debug, Serialize, Deserialize)]
-pub struct AppOptions {
-    
-}
+pub struct AppOptions {}

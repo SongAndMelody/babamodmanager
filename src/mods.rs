@@ -2,7 +2,8 @@ use std::{
     collections::{HashMap, HashSet},
     convert::Infallible,
     ffi::OsStr,
-    fs::{self, read_to_string},
+    fmt::Display,
+    fs,
     path::PathBuf,
     str::FromStr,
 };
@@ -28,10 +29,10 @@ pub struct BabaMod {
 
 impl BabaMod {
     /// Create a new BabaMod from the path to either the directory, or the file that exists at the location.
-    /// 
+    ///
     /// # Errors
     /// Errors are tossed out - if the name is invalid, the name of the mod is set to `"[Invalid Name!]"`,
-    /// and if no name is given, the name of the mod is set to `"[No name Given!]"`. 
+    /// and if no name is given, the name of the mod is set to `"[No name Given!]"`.
     pub fn new(path: PathBuf) -> Self {
         let name = path
             .file_name()
@@ -72,6 +73,24 @@ impl BabaMod {
             .iter()
             .for_each(|file| result.push(PathBuf::from(file)));
         // TODO: add sprites, etc. to this list
+        result
+    }
+
+    /// Returns a vector of all lua files that the mod uses.
+    ///
+    pub fn lua_files(&self, include_init: bool) -> Vec<PathBuf> {
+        let mut result: Vec<PathBuf> = self
+            .all_relevant_files()
+            .into_iter()
+            .filter(is_lua_file)
+            .collect();
+        if include_init {
+            if let Some(config) = &self.config {
+                if let Some(init) = &config.init {
+                    result.push(PathBuf::from(&init));
+                }
+            }
+        }
         result
     }
 
@@ -118,9 +137,9 @@ impl BabaMod {
 
 /// Represents a configuration file for a mod, unique to the manager.
 /// This also represents a mod that could be fetched from elsewhere.
-/// 
+///
 /// # Notes
-/// 
+///
 #[derive(serde::Serialize, serde::Deserialize, Debug, Default, Clone)]
 pub struct Config {
     /// The mod ID, used for compatibilities
@@ -151,7 +170,7 @@ impl Config {
     /// Tries to find a config file, given a path to it.
     pub fn new(path: PathBuf) -> Result<Self, BabaError> {
         if !path.ends_with(CONFIG_FILE_NAME) {
-            return Err(BabaError::ModdingError(ModdingError::NotAConfigFile));
+            return Err(BabaError::ModdingError(ModdingError::NotAConfigFile(path)));
         }
         // read out the file as a string
         let file = fs::read_to_string(path)?;
@@ -174,16 +193,50 @@ impl Config {
 #[derive(Debug)]
 pub enum ModdingError {
     /// The specified file was not a config file
-    NotAConfigFile,
+    NotAConfigFile(PathBuf),
     /// The specified string could not be parsed into a function
-    NotALuaFunction,
+    NotALuaFunction(String),
     /// While merging functions, the rename could not properly be specified
     RenameError,
     /// While merging functions, the given function was not a baba function,
     /// despite having been declared one
     NotABabaFunction,
     /// While merging functions, code was removed
-    CodeRemoval
+    CodeRemoval,
+    /// While patching together functions, at least one patch didn't work correctly
+    IncompletePatching,
+}
+
+impl Display for ModdingError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let message = match self {
+            ModdingError::NotAConfigFile(path_buf) => {
+                format!(
+                    "The file at {:?} is not a valid configuration file.",
+                    path_buf
+                )
+            }
+            ModdingError::NotALuaFunction(str) => {
+                format!(
+                    "The following was expected to be a lua function, but it wasn't:\n{}",
+                    str
+                )
+            }
+            ModdingError::RenameError => {
+                format!("There was an error when attempting to preform a rename while merging")
+            }
+            ModdingError::NotABabaFunction => {
+                format!("The given function was not a baba function, despite being declared one.")
+            }
+            ModdingError::CodeRemoval => {
+                format!("Mods cannot be valid candidates for merging if they remove code from the original.")
+            }
+            ModdingError::IncompletePatching => {
+                format!("The two mods could not be properly merged, as at least one patch could not be applied correctly.")
+            }
+        };
+        write!(f, "{}", message)
+    }
 }
 
 // A Lua function used in either a baba mod, or baba is you
@@ -207,15 +260,15 @@ impl FromStr for LuaFuncDef {
 
     fn from_str(line: &str) -> Result<Self, Self::Err> {
         if !line.starts_with("function") {
-            return Err(ModdingError::NotALuaFunction);
+            return Err(ModdingError::NotALuaFunction(line.to_owned()));
         }
         let name = line
             .split(' ')
             .nth(1)
-            .ok_or(ModdingError::NotALuaFunction)?
+            .ok_or(ModdingError::NotALuaFunction(line.to_owned()))?
             .split('(')
             .next()
-            .ok_or(ModdingError::NotALuaFunction)?
+            .ok_or(ModdingError::NotALuaFunction(line.to_owned()))?
             .to_owned();
         let is_baba_native = baba_function_names().contains(&name);
         let function = LuaFuncDef {
@@ -238,10 +291,7 @@ impl LuaFunction {
     /// the one function.
     ///
     /// May return [`None`] if the provided code does not have the value.
-    pub fn from_definition_and_code(
-        definition: &LuaFuncDef,
-        code: &str,
-    ) -> Option<Self> {
+    pub fn from_definition_and_code(definition: &LuaFuncDef, code: &str) -> Option<Self> {
         let functions = string_to_function_strings(code);
         functions
             .into_iter()
@@ -324,7 +374,7 @@ impl LuaFile {
     ///
     /// This checks whether the name of the definition is found in either
     /// the keys or the values (so it can check either the old or new name).
-    /// 
+    ///
     /// This takes a reference to a [`LuaFuncDef`] - for more
     /// generalized use see [`LuaFile::function_uses_injection_str`].
     pub fn function_uses_injection(&self, func: &LuaFuncDef) -> bool {
@@ -332,7 +382,7 @@ impl LuaFile {
     }
 
     /// Returns whether a specified function uses injection.
-    /// 
+    ///
     /// This takes a `&str` for generalized use.
     pub fn function_uses_injection_str(&self, func_name: &str) -> bool {
         self.renamed_functions.contains_key(func_name)
@@ -343,7 +393,7 @@ impl LuaFile {
     }
 
     /// Grabs the renamed function for a given definition, if it exists.
-    /// 
+    ///
     /// Returns [`None`] if the rename doesn't exist.
     pub fn injection_data(&self, func: &LuaFuncDef) -> Option<String> {
         self.renamed_functions.get(&func.name()).map(Clone::clone)
@@ -359,7 +409,7 @@ impl FromStr for LuaFile {
         // local new = old
         // new = old
         let mut renamed_functions = HashMap::new();
-        'outer: for line in s.lines() {
+        for line in s.lines() {
             for name in baba_function_names() {
                 if line.contains(&name) && !line.contains("function") {
                     // removing the `local`
@@ -396,7 +446,7 @@ fn is_lua_file(path: &PathBuf) -> bool {
 }
 
 /// Procures a set of [`LuaFuncDef`]s from a string.
-/// 
+///
 /// This is only the definitions and related data, everything else in the
 /// string is ignored
 pub fn functions_from_string(str: &str) -> HashSet<LuaFuncDef> {

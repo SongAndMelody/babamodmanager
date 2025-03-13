@@ -1,4 +1,3 @@
-
 /// Tests whether or not `fetch_field` returns an `Ok` variant
 #[test]
 fn fetch_field_1() {

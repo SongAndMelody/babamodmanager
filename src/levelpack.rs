@@ -1,6 +1,6 @@
 use std::{fmt::Display, fs, path::PathBuf, str::FromStr};
 
-use crate::{baba, error::BabaError, mods::BabaMod};
+use crate::{error::BabaError, mods::BabaMod};
 
 /// The name of the file that holds the world data
 const WORLD_DATA_FILE_NAME: &str = "world_data.txt";
@@ -24,31 +24,9 @@ pub struct Levelpack {
     mods_enabled: bool,
 }
 
-/// Error that might arise when trying to do stuff with levelpacks
-#[derive(Debug)]
-pub enum LevelpackError {
-    /// The requested levelpack does not exist
-    LevelpackDoesNotExist,
-    /// When parsing a field in `world_data.txt`,
-    /// Either the field was not properly formatted (true)
-    /// or the field was not what we were looking for (false)
-    FieldParsingError(bool),
-    /// While parsing a string, something went awry
-    StringParsingError,
-    /// The levelpack does not have an Icon
-    IconNotFound,
-    /// The levelpack folder does not exist
-    LevelpackFolderNotFound {
-        /// The path that was attempted to be browsed for the levelpack
-        bad_path: String,
-    },
-    /// The levelpack folder exists, but no pack folders or files were found
-    NoLevelpacksFound,
-}
-
 impl Levelpack {
     /// Create a new Levelpack from a path.
-    /// 
+    ///
     /// # Errors
     /// This function may error if:
     /// - The given path does not exist ([`LevelpackError::LevelpackDoesNotExist`])
@@ -57,7 +35,7 @@ impl Levelpack {
         // if the levelpack doesn't exist, return early
         if !fs::exists(path.clone())? {
             return Err(BabaError::LevelpackError(
-                LevelpackError::LevelpackDoesNotExist,
+                LevelpackError::LevelpackDoesNotExist(path),
             ));
         }
 
@@ -106,7 +84,7 @@ impl Levelpack {
 
     /// Attempts to find the set of mods in the levelpack.
     /// This may be zero.
-    /// 
+    ///
     /// # Errors
     /// This function may error if there was an error reading the mods directory ([`std::io::Error`])
     pub fn mods(&self) -> Result<Vec<BabaMod>, BabaError> {
@@ -140,6 +118,55 @@ impl Levelpack {
     pub fn pack_file(&self, file: LevelpackFile) -> PathBuf {
         let joiner: String = file.into();
         self.path.join(joiner)
+    }
+}
+
+/// Error that might arise when trying to do stuff with levelpacks
+#[derive(Debug)]
+pub enum LevelpackError {
+    /// The requested levelpack does not exist
+    LevelpackDoesNotExist(PathBuf),
+    /// When parsing a field in `world_data.txt`,
+    /// Either the field was not properly formatted (true)
+    /// or the field was not what we were looking for (false)
+    FieldParsingError(bool),
+    /// While parsing a string, something went awry
+    StringParsingError(String),
+    /// The levelpack does not have an Icon
+    IconNotFound(PathBuf),
+    /// The levelpack folder does not exist
+    LevelpackFolderNotFound {
+        /// The path that was attempted to be browsed for the levelpack
+        bad_path: String,
+    },
+    /// The levelpack folder exists, but no pack folders or files were found
+    NoLevelpacksFound,
+}
+
+impl Display for LevelpackError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let message = match self {
+            LevelpackError::LevelpackDoesNotExist(path_buf) => {
+                format!("The levelpack at {:?} does not exist", path_buf)
+            }
+            LevelpackError::FieldParsingError(flag) => match flag {
+                true => format!("Malformed world_data.txt"),
+                false => format!("Incorrect field"),
+            },
+            LevelpackError::StringParsingError(str) => {
+                format!("Could not parse the following as data: {}", str)
+            }
+            LevelpackError::IconNotFound(path_buf) => {
+                format!("{:?} Is not a valid path for an icon", path_buf)
+            }
+            LevelpackError::LevelpackFolderNotFound { bad_path } => {
+                format!("The path {:?} should have a levelpack folder, but it does not.", bad_path)
+            },
+            LevelpackError::NoLevelpacksFound => {
+                format!("")
+            },
+        };
+        write!(f, "{}", message)
     }
 }
 
@@ -191,7 +218,7 @@ impl FromStr for LevelpackFile {
             "sprites" => Self::Sprites,
             "themes" => Self::Themes,
             "icon" | "icon.png" => Self::IconPng,
-            _ => return Err(LevelpackError::StringParsingError),
+            _ => return Err(LevelpackError::StringParsingError(s.to_owned())),
         })
     }
 }
@@ -213,10 +240,10 @@ impl From<LevelpackFile> for String {
 }
 
 /// Attempts to get and parse a field from a line of text.
-/// 
+///
 /// For example: giving `fetch_field<usize>("name", "name=abc")`
 /// should return `Ok("abc")`
-/// 
+///
 /// # Errors
 /// This function may error if:
 /// - When parsing the field, it did not match the `"lhs=rhs"` format
@@ -235,6 +262,6 @@ where
         split
             .1
             .parse()
-            .map_err(|_| LevelpackError::StringParsingError)
+            .map_err(|_| LevelpackError::StringParsingError("Malformed world_data.txt".to_owned()))
     }
 }

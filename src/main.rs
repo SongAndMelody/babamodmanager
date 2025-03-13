@@ -1,4 +1,5 @@
-#![allow(unused)]
+#![allow(dead_code)]
+#![warn(clippy::todo)]
 
 mod app;
 mod baba;
