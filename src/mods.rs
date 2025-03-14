@@ -1,6 +1,5 @@
 use std::{
-    collections::{HashMap, HashSet},
-    convert::Infallible,
+    collections::HashSet,
     ffi::OsStr,
     fmt::Display,
     fs,
