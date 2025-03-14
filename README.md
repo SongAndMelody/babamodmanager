@@ -4,7 +4,7 @@ A Mod manager for Baba is You. Currently a work in progress.
 
 ## Usage - Developers
 
-The mod manager is intended to be backwards-compatible with any mod, even those that are just singletons and the like. However, you can add some extra flair to your mod for a little bit of tweaking.
+The mod manager is intended to be backwards-compatible with any mod, even those that are just singletons and the like. However, you can add some extra flair to your mod for the cost of a little bit of tweaking.
 
 Set up your mod like so in the file system:
 

@@ -337,135 +337,53 @@ impl LuaFunction {
 impl FromStr for LuaFunction {
     type Err = ModdingError;
 
-    fn from_str(line: &str) -> Result<Self, Self::Err> {
-        let function = line.parse()?;
-        Ok(Self {
-            definition: function,
-            code: line.to_owned(),
-        })
-    }
-}
-
-/// A representation of an entire lua file.
-///
-/// Best to create this via parsing a [`String`],
-/// or using a [`From`] implementation.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct LuaFile {
-    /// The set of functions (code included)
-    functions: Vec<LuaFunction>,
-    /// A dictionary of renamed, baba native functions
-    /// - Key: the original baba function
-    /// - Value: the renamed function
-    renamed_functions: HashMap<String, String>,
-    /// The entire code (unaltered)
-    code: String,
-}
-
-impl LuaFile {
-    /// Returns the whole code of the file.
-    ///
-    /// This is from tip to tail, including things not relevant
-    /// to the program
-    pub fn code(&self) -> String {
-        self.code.clone()
-    }
-    /// Returns the set of function definitions.
-    ///
-    /// This is merely for quicker use in deciding function
-    /// collissions, for better working with functions, use
-    /// [`LuaFile::functions`].
-    pub fn definitions(&self) -> HashSet<LuaFuncDef> {
-        self.functions()
-            .into_iter()
-            .map(|func| func.definition)
-            .collect()
-    }
-    /// Returns a list of functions in the file.
-    ///
-    /// These functions are in a more workable format, they can be edited,
-    /// altered, etc. You can merge two functions with [`crate::merge::merge_files`].
-    pub fn functions(&self) -> Vec<LuaFunction> {
-        self.functions.clone()
-    }
-    /// Returns a dictionary of renamed functions (for the purposes of the injection method).
-    ///
-    /// The keys are the old names (see [`baba_function_names`]), and the
-    /// values are the new names.
-    ///
-    /// Supports these kinds of syntax (on structure creation):
-    /// - `local new_name = old_name`
-    /// - `new_name = old_name`
-    pub fn renamed_functions(&self) -> HashMap<String, String> {
-        self.renamed_functions.clone()
-    }
-    /// Returns whether a specified function uses injection.
-    ///
-    /// This checks whether the name of the definition is found in either
-    /// the keys or the values (so it can check either the old or new name).
-    ///
-    /// This takes a reference to a [`LuaFuncDef`] - for more
-    /// generalized use see [`LuaFile::function_uses_injection_str`].
-    pub fn function_uses_injection(&self, func: &LuaFuncDef) -> bool {
-        self.function_uses_injection_str(&func.name)
-    }
-
-    /// Returns whether a specified function uses injection.
-    ///
-    /// This takes a `&str` for generalized use.
-    pub fn function_uses_injection_str(&self, func_name: &str) -> bool {
-        self.renamed_functions.contains_key(func_name)
-            || self
-                .renamed_functions
-                .values()
-                .fold(false, |prev, y| prev || *y == func_name)
-    }
-
-    /// Grabs the renamed function for a given definition, if it exists.
-    ///
-    /// Returns [`None`] if the rename doesn't exist.
-    pub fn injection_data(&self, func: &LuaFuncDef) -> Option<String> {
-        self.renamed_functions.get(&func.name()).map(Clone::clone)
-    }
-}
-
-impl FromStr for LuaFile {
-    type Err = Infallible;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let functions = string_to_function_strings(s);
-        // for the renamed functions, they look like this:
-        // local new = old
-        // new = old
-        let mut renamed_functions = HashMap::new();
-        for line in s.lines() {
-            for name in baba_function_names() {
-                if line.contains(&name) && !line.contains("function") {
-                    // removing the `local`
-                    let line = line.replace("local", "");
-                    let rename = line.split('=').next().unwrap_or("RENAME_NOT_FOUND");
-                    // the replace removes spaces so it's just the name
-                    renamed_functions.insert(name, rename.to_owned().replace(' ', ""));
-                }
+    fn from_str(code: &str) -> Result<Self, Self::Err> {
+        let function = code.parse()?;
+        let mut new_code = String::new();
+        // CHECK:
+        // we don't want any functions that use this form:
+        // x = function(args...)
+        // replace with the following
+        // function x(args...)
+        for line in code.lines() {
+            if line.contains('=') && line.contains("function") {
+                let mut iter = line.split(' ');
+                let Some(mut name) = iter.next() else {
+                    continue;
+                };
+                // removing the local
+                name = if name == "local" {
+                    let Some(name) = iter.next() else {
+                        continue;
+                    };
+                    name
+                } else {
+                    name
+                };
+                // intentionally discard the '='
+                iter.next();
+                // grab the rest
+                let rest = iter.fold("".to_owned(), |mut init, next| {
+                    init.push_str(next);
+                    init
+                });
+                // split at the function seperator
+                let Some((_, mut args)) = rest.split_once('(').map(|(x, y)| (x.to_owned(), y.to_owned())) else {
+                    continue;
+                };
+                // add back on the delimiter
+                args.insert(0, '(');
+                // format it
+                let result = format!("function {name}{args}");
+                new_code.push_str(&result);
+            } else {
+                new_code.push_str(line);
             }
         }
         Ok(Self {
-            functions,
-            renamed_functions,
-            code: s.to_owned(),
+            definition: function,
+            code: new_code,
         })
-    }
-}
-
-impl From<String> for LuaFile {
-    fn from(value: String) -> Self {
-        value.parse().unwrap()
-    }
-}
-
-impl From<&str> for LuaFile {
-    fn from(value: &str) -> Self {
-        value.parse().unwrap()
     }
 }
 
@@ -489,7 +407,7 @@ pub fn functions_from_string(str: &str) -> HashSet<LuaFuncDef> {
     result
 }
 
-fn baba_function_names() -> HashSet<String> {
+pub fn baba_function_names() -> HashSet<String> {
     include_str!("data/babafuncs.txt")
         .split('\n')
         .map(ToOwned::to_owned)

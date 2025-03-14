@@ -236,7 +236,6 @@ mapunlock
 mapunlock_transition
 menu_position
 menudebug
-menufuncs.[menu].enter
 menusetx
 move
 move_command

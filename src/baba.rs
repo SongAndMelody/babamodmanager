@@ -4,8 +4,8 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     error::BabaError,
+    files::{editor_functions, LuaFile},
     levelpack::{Levelpack, LevelpackError},
-    mods::LuaFile,
 };
 
 /// A list of "reserved" names that are used by baba.
@@ -145,6 +145,7 @@ impl BabaFiles {
             .map(|&name| self.path.join("Data").join(format!("{}.lua", name)))
             .map(|path| fs::read_to_string(path))
             .flatten()
+            .chain(editor_functions().unwrap_or(vec![]))
             .map(Into::into)
             .collect()
     }

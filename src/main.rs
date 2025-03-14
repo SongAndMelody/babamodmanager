@@ -8,6 +8,7 @@ mod test;
 mod mods;
 mod error;
 mod merge;
+mod files;
 
 use eframe::{self, NativeOptions};
 

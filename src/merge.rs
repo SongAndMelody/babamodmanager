@@ -1,6 +1,7 @@
 use crate::{
     error::BabaError,
-    mods::{concat_strings, BabaMod, Config, LuaFile, LuaFunction, ModdingError},
+    files::LuaFile,
+    mods::{concat_strings, BabaMod, Config, LuaFunction, ModdingError},
 };
 
 use diff_match_patch_rs::{DiffMatchPatch, PatchInput};
@@ -64,7 +65,7 @@ type DiffMode = diff_match_patch_rs::Compat;
 /// This is generally used as a way to make mod merging easier. Nontheless, this function
 /// supports both types of function replacement, and can also work via mix-and-matching with
 /// a custom merging solution (via way of including both the modified code, and the injection function).
-/// ## Unsupported Function Declarations
+/// ## UNusual Function Declarations
 /// Any of the following are not supported, but can be easily refactored into either one of the other two.
 /// ```lua
 /// -- "Direct Injection"
@@ -72,6 +73,7 @@ type DiffMode = diff_match_patch_rs::Compat;
 ///     -- This can be easily refactored into a proper form
 ///     -- via moving the `function` to the start
 ///     -- `function menufuncs.[menu].enter(args...)`
+///     -- The program does this automatically
 /// end
 /// ```
 #[must_use]
