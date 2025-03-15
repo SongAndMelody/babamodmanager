@@ -3,12 +3,12 @@
 
 mod app;
 mod baba;
-mod levelpack;
-mod test;
-mod mods;
 mod error;
-mod merge;
 mod files;
+mod levelpack;
+mod merge;
+mod mods;
+mod test;
 
 use eframe::{self, NativeOptions};
 

@@ -1,167 +1,8 @@
-use std::{
-    collections::HashSet,
-    ffi::OsStr,
-    fmt::Display,
-    fs,
-    path::PathBuf,
-    str::FromStr,
-};
+use std::{collections::HashSet, ffi::OsStr, fmt::Display, fs, path::PathBuf, str::FromStr};
 
 use serde::{Deserialize, Serialize};
 
-use crate::error::BabaError;
-
-/// The name of the config file.
-/// This should be located inside of the mod folder (i.e. `Lua\[mod]\[this value]`)
-const CONFIG_FILE_NAME: &str = "Config.json";
-
-/// Represents a Mod in Baba is You
-#[derive(Debug)]
-pub struct BabaMod {
-    /// The path to the mod (should be absolute)
-    path: PathBuf,
-    /// The config for the mod, if one exists
-    config: Option<Config>,
-    /// The name of the mod
-    name: String,
-}
-
-impl BabaMod {
-    /// Create a new BabaMod from the path to either the directory, or the file that exists at the location.
-    ///
-    /// # Errors
-    /// Errors are tossed out - if the name is invalid, the name of the mod is set to `"[Invalid Name!]"`,
-    /// and if no name is given, the name of the mod is set to `"[No name Given!]"`.
-    pub fn new(path: PathBuf) -> Self {
-        let name = path
-            .file_name()
-            .map(|x| x.to_os_string())
-            .unwrap_or("[Invalid Name!]".into())
-            .into_string()
-            .unwrap_or("[No name Given!]".to_owned());
-        let config = Config::new(path.join(CONFIG_FILE_NAME)).ok();
-        Self { path, config, name }
-    }
-
-    /// Reports whether the mod is a singleton (i.e. a standalone lua file)
-    pub fn is_singleton(&self) -> bool {
-        self.path.extension().is_some()
-    }
-
-    /// Returns whether this mod has a config file associated with it.
-    pub fn has_config(&self) -> bool {
-        self.config.is_some()
-    }
-
-    /// Gets the path for the sprites folder
-    pub fn sprites_folder(&self) -> PathBuf {
-        self.path.join(r"..\..\Sprites")
-    }
-
-    /// Returns a vector of any relevant files to the mod.
-    pub fn all_relevant_files(&self) -> Vec<PathBuf> {
-        let mut result = Vec::new();
-        result.push(self.path.clone());
-        // If there's no config, we only worry about ourselves
-        let Some(config) = self.config.clone() else {
-            return result;
-        };
-        // first, we push on every file as called for in the config's files set
-        config
-            .files
-            .iter()
-            .for_each(|file| result.push(PathBuf::from(file)));
-        // TODO: add sprites, etc. to this list
-        result
-    }
-
-    /// Returns a vector of all lua files that the mod uses.
-    ///
-    pub fn lua_files(&self, include_init: bool) -> Vec<PathBuf> {
-        let mut result: Vec<PathBuf> = self
-            .all_relevant_files()
-            .into_iter()
-            .filter(is_lua_file)
-            .collect();
-        if include_init {
-            if let Some(config) = &self.config {
-                if let Some(init) = &config.init {
-                    result.push(PathBuf::from(&init));
-                }
-            }
-        }
-        result
-    }
-
-    /// Returns a set of functions that the mod defines.
-    /// This is a [`HashSet`] of [`LuaFuncDef`]s, best for comparing
-    /// this mod against another.
-    pub fn defined_functions(&self) -> HashSet<LuaFuncDef> {
-        let mut result = HashSet::new();
-        let iter = self.all_relevant_files().into_iter().filter(is_lua_file);
-        for file in iter {
-            let Ok(contents) = fs::read_to_string(file) else {
-                continue;
-            };
-            let set = functions_from_string(&contents);
-            result = result.union(&set).map(Clone::clone).collect();
-        }
-        result
-    }
-
-    /// Grabs all the sprites in the sprites folder by name
-    ///
-    /// # Errors
-    /// Will only throw an error if the directory from [`BabaMod::sprites_folder`] is unable to be read
-    pub fn sprites_by_name(&self) -> Result<HashSet<String>, BabaError> {
-        Ok(self
-            .sprites_folder()
-            .read_dir()?
-            .flatten()
-            .map(|x| x.file_name().into_string().unwrap_or_default())
-            .collect())
-    }
-
-    /// Returns whether this mod is compatible with another mod
-    /// via way of function overrides & sprite checks.
-    pub fn is_compatible_with(&self, other: &Self) -> bool {
-        self.defined_functions()
-            .is_disjoint(&other.defined_functions())
-            && self
-                .sprites_by_name()
-                .unwrap_or_default()
-                .is_disjoint(&other.sprites_by_name().unwrap_or_default())
-    }
-
-    /// Gets the mod id, or if the config doesn't exist, gets the name instead
-    pub fn mod_id(&self) -> String {
-        match &self.config {
-            Some(config) => config.modid.clone(),
-            None => self.name.clone(),
-        }
-    }
-
-    /// Gets the list of authors, or if the config doesn't exist, returns an empty vector
-    pub fn authors(&self) -> Vec<String> {
-        match &self.config {
-            Some(config) => config.authors.clone(),
-            None => vec![],
-        }
-    }
-
-    /// Gets the name of the mod
-    pub fn name(&self) -> String {
-        self.name.clone()
-    }
-
-    /// Gets the description of the mod, or if the config doesn't exist, returns `"No description given..."`
-    pub fn description(&self) -> String {
-        match &self.config {
-            Some(config) => config.description.clone(),
-            None => "No description given...".to_owned(),
-        }
-    }
-}
+use crate::{error::BabaError, files::CONFIG_FILE_NAME};
 
 /// Represents a configuration file for a mod, unique to the manager.
 /// This also represents a mod that could be fetched from elsewhere.
@@ -205,6 +46,30 @@ impl Config {
         // parse it as a Config
         let config: Config = serde_json::from_str(&file)?;
         Ok(config)
+    }
+
+    pub fn files(&self) -> Vec<String> {
+        self.files.clone()
+    }
+
+    pub fn init(&self) -> Option<String> {
+        self.init.clone()
+    }
+
+    pub fn modid(&self) -> String {
+        self.modid.clone()
+    }
+
+    pub fn authors(&self) -> Vec<String> {
+        self.authors.clone()
+    }
+
+    pub fn description(&self) -> String {
+        self.description.clone()
+    }
+
+    pub fn sprites(&self) -> Vec<String> {
+        self.sprites.clone()
     }
 
     /// creates a config directly from json data
@@ -320,7 +185,7 @@ impl LuaFunction {
     ///
     /// May return [`None`] if the provided code does not have the value.
     pub fn from_definition_and_code(definition: &LuaFuncDef, code: &str) -> Option<Self> {
-        let functions = string_to_function_strings(code);
+        let functions = code_to_funcs(code);
         functions
             .into_iter()
             .find(|func| func.definition == *definition)
@@ -367,7 +232,10 @@ impl FromStr for LuaFunction {
                     init
                 });
                 // split at the function seperator
-                let Some((_, mut args)) = rest.split_once('(').map(|(x, y)| (x.to_owned(), y.to_owned())) else {
+                let Some((_, mut args)) = rest
+                    .split_once('(')
+                    .map(|(x, y)| (x.to_owned(), y.to_owned()))
+                else {
                     continue;
                 };
                 // add back on the delimiter
@@ -387,7 +255,7 @@ impl FromStr for LuaFunction {
 }
 
 /// Returns whether or not the [`PathBuf`] is a lua file
-fn is_lua_file(path: &PathBuf) -> bool {
+pub fn is_lua_file(path: &PathBuf) -> bool {
     path.extension().map(OsStr::to_os_string) == Some("lua".into())
 }
 
@@ -416,7 +284,7 @@ pub fn baba_function_names() -> HashSet<String> {
 /// Splits a string into a set of Lua functions (also as Strings).
 ///
 /// This discards any extraneous data, only containing the functions.
-pub fn string_to_function_strings(file: &str) -> Vec<LuaFunction> {
+pub fn code_to_funcs(file: &str) -> Vec<LuaFunction> {
     // Split the string at every use of `function`
     file.split("function")
         // split it again at every `end` without indentation,

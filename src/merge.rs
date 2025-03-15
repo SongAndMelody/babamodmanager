@@ -1,7 +1,7 @@
 use crate::{
     error::BabaError,
-    files::LuaFile,
-    mods::{concat_strings, BabaMod, Config, LuaFunction, ModdingError},
+    files::{BabaMod, LuaFile},
+    mods::{concat_strings, Config, LuaFunction, ModdingError},
 };
 
 use diff_match_patch_rs::{DiffMatchPatch, PatchInput};

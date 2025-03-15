@@ -1,6 +1,6 @@
 use std::{fmt::Display, fs, path::PathBuf, str::FromStr};
 
-use crate::{error::BabaError, mods::BabaMod};
+use crate::{error::BabaError, files::BabaMod};
 
 /// The name of the file that holds the world data
 const WORLD_DATA_FILE_NAME: &str = "world_data.txt";
@@ -160,11 +160,14 @@ impl Display for LevelpackError {
                 format!("{:?} Is not a valid path for an icon", path_buf)
             }
             LevelpackError::LevelpackFolderNotFound { bad_path } => {
-                format!("The path {:?} should have a levelpack folder, but it does not.", bad_path)
-            },
+                format!(
+                    "The path {:?} should have a levelpack folder, but it does not.",
+                    bad_path
+                )
+            }
             LevelpackError::NoLevelpacksFound => {
                 format!("")
-            },
+            }
         };
         write!(f, "{}", message)
     }
