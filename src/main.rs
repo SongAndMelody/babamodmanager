@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 
-mod app;
+mod application;
 mod error;
 mod files;
 mod levelpack;

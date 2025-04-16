@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::files::babafiles::BabaFiles;
+use super::{appoptions::AppOptions, appstate::AppState};
 
 #[derive(Default, Debug, Serialize, Deserialize)]
 pub struct App {
@@ -19,15 +19,3 @@ impl App {
         Self::default()
     }
 }
-
-/// The current state of the application
-#[derive(Default, Debug, Serialize, Deserialize)]
-pub enum AppState {
-    /// Currently setting up everything for the user
-    #[default]
-    Setup,
-    Built(BabaFiles),
-}
-
-#[derive(Default, Debug, Serialize, Deserialize)]
-pub struct AppOptions {}
