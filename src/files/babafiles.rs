@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     error::{babaerror::BabaError, levelpackerror::LevelpackError},
-    levelpack::levelpack::Levelpack,
+    levelpack::levelpackrepr::LevelpackRepr,
 };
 
 use super::{
@@ -67,7 +67,10 @@ impl BabaFiles {
     /// - The levelpacks directory does not exist (returns a nested [`LevelpackError::LevelpackFolderNotFound`])
     /// - The directory could not be read (returns a nested [`io::Error`])
     /// - The directory holds zero levelpacks, irrespective of `respect_reserved_names` (returns a nested [`LevelpackError::NoLevelpacksFound`])
-    pub fn levelpacks(&self, respect_reserved_names: bool) -> Result<Vec<Levelpack>, BabaError> {
+    pub fn levelpacks(
+        &self,
+        respect_reserved_names: bool,
+    ) -> Result<Vec<LevelpackRepr>, BabaError> {
         // get the directory for the levelpacks
         let path = self.levelpacks_dir()?;
         let path_iter = path.read_dir()?;
@@ -76,8 +79,8 @@ impl BabaFiles {
 
         // before we iterate over the entries, check to see if any actually exist
         let iter = path_iter.flatten().collect::<Vec<_>>();
-        if iter.len() == 0 {
-            return Err(BabaError::LevelpackError(LevelpackError::NoLevelpacksFound));
+        if iter.is_empty() {
+            return Err(BabaError::Levelpack(LevelpackError::NoLevelpacksFound));
         }
         // loop over each entry
         'outer: for entry in iter {
@@ -94,7 +97,7 @@ impl BabaFiles {
                 }
             }
             // create a Levelpack from the folder
-            let Ok(pack) = Levelpack::new(path) else {
+            let Ok(pack) = LevelpackRepr::new(path) else {
                 continue;
             };
             // add it to the list
@@ -107,9 +110,8 @@ impl BabaFiles {
         BABA_LUA_FILE_NAMES
             .iter()
             .map(|&name| self.path.join("Data").join(format!("{}.lua", name)))
-            .map(|path| fs::read_to_string(path))
-            .flatten()
-            .chain(editor_functions().unwrap_or(vec![]))
+            .flat_map(fs::read_to_string)
+            .chain(editor_functions().unwrap_or_default())
             .map(Into::into)
             .collect()
     }

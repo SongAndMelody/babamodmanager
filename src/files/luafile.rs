@@ -82,14 +82,14 @@ impl LuaFile {
             || self
                 .renamed_functions
                 .values()
-                .fold(false, |prev, y| prev || *y == func_name)
+                .any(|y| *y == func_name)
     }
 
     /// Grabs the renamed function for a given definition, if it exists.
     ///
     /// Returns [`None`] if the rename doesn't exist.
     pub fn injection_data(&self, func: &LuaFuncDef) -> Option<String> {
-        self.renamed_functions.get(&func.name()).map(Clone::clone)
+        self.renamed_functions.get(&func.name()).cloned()
     }
 }
 

@@ -29,8 +29,8 @@ impl Display for LevelpackError {
                 format!("The levelpack at {:?} does not exist", path_buf)
             }
             LevelpackError::FieldParsingError(flag) => match flag {
-                true => format!("Malformed world_data.txt"),
-                false => format!("Incorrect field"),
+                true => "Malformed world_data.txt".to_string(),
+                false => "Incorrect field".to_string(),
             },
             LevelpackError::StringParsingError(str) => {
                 format!("Could not parse the following as data: {}", str)
@@ -45,7 +45,7 @@ impl Display for LevelpackError {
                 )
             }
             LevelpackError::NoLevelpacksFound => {
-                format!("")
+                String::new()
             }
         };
         write!(f, "{}", message)

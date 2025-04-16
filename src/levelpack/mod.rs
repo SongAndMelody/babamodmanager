@@ -2,7 +2,7 @@ use std::str::FromStr;
 
 use crate::error::levelpackerror::LevelpackError;
 
-pub mod levelpack;
+pub mod levelpackrepr;
 pub mod levelpackfile;
 
 /// The name of the file that holds the world data

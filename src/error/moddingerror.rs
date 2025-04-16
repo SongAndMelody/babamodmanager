@@ -34,16 +34,16 @@ impl Display for ModdingError {
                 )
             }
             ModdingError::RenameError => {
-                format!("There was an error when attempting to preform a rename while merging")
+                "There was an error when attempting to preform a rename while merging".to_string()
             }
             ModdingError::NotABabaFunction => {
-                format!("The given function was not a baba function, despite being declared one.")
+                "The given function was not a baba function, despite being declared one.".to_string()
             }
             ModdingError::CodeRemoval => {
-                format!("Mods cannot be valid candidates for merging if they remove code from the original.")
+                "Mods cannot be valid candidates for merging if they remove code from the original.".to_string()
             }
             ModdingError::IncompletePatching => {
-                format!("The two mods could not be properly merged, as at least one patch could not be applied correctly.")
+                "The two mods could not be properly merged, as at least one patch could not be applied correctly.".to_string()
             }
         };
         write!(f, "{}", message)

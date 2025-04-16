@@ -40,7 +40,7 @@ impl Config {
     /// Tries to find a config file, given a path to it.
     pub fn new(path: PathBuf) -> Result<Self, BabaError> {
         if !path.ends_with(CONFIG_FILE_NAME) {
-            return Err(BabaError::ModdingError(ModdingError::NotAConfigFile(path)));
+            return Err(BabaError::Modding(ModdingError::NotAConfigFile(path)));
         }
         // read out the file as a string
         let file = fs::read_to_string(path)?;

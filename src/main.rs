@@ -1,6 +1,4 @@
 #![allow(dead_code)]
-#![warn(clippy::todo)]
-#![warn(clippy::empty_docs)]
 
 mod app;
 mod error;

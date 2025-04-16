@@ -9,7 +9,7 @@ use super::{fetch_field, levelpackfile::LevelpackFile, WORLD_DATA_FILE_NAME};
 
 /// Represents a single levelpack in Baba is you.
 #[derive(Default, Debug)]
-pub struct Levelpack {
+pub struct LevelpackRepr {
     /// The path to the levelpack (absolute)
     path: PathBuf,
     /// The name of the pack
@@ -26,7 +26,7 @@ pub struct Levelpack {
     mods_enabled: bool,
 }
 
-impl Levelpack {
+impl LevelpackRepr {
     /// Create a new Levelpack from a path.
     ///
     /// # Errors
@@ -36,9 +36,9 @@ impl Levelpack {
     pub fn new(path: PathBuf) -> Result<Self, BabaError> {
         // if the levelpack doesn't exist, return early
         if !fs::exists(path.clone())? {
-            return Err(BabaError::LevelpackError(
-                LevelpackError::LevelpackDoesNotExist(path),
-            ));
+            return Err(BabaError::Levelpack(LevelpackError::LevelpackDoesNotExist(
+                path,
+            )));
         }
 
         // load the world_data.txt into a String
@@ -102,7 +102,7 @@ impl Levelpack {
         // before we iterate over the entries, check to see if any actually exist
         let iter = path_iter.flatten().collect::<Vec<_>>();
         // if not, just return an empty vector
-        if iter.len() == 0 {
+        if iter.is_empty() {
             return Ok(vec![]);
         }
         // iterate over each entry
@@ -123,7 +123,7 @@ impl Levelpack {
     }
 }
 
-impl Display for Levelpack {
+impl Display for LevelpackRepr {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,

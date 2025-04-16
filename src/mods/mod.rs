@@ -1,4 +1,4 @@
-use std::{collections::HashSet, ffi::OsStr, path::PathBuf, str::FromStr};
+use std::{collections::HashSet, ffi::OsStr, path::Path, str::FromStr};
 
 use luafuncdef::LuaFuncDef;
 use luafunction::LuaFunction;
@@ -9,7 +9,7 @@ pub mod luafuncdef;
 pub mod luafunction;
 
 /// Returns whether or not the [`PathBuf`] is a lua file
-pub fn is_lua_file(path: &PathBuf) -> bool {
+pub fn is_lua_file(path: &Path) -> bool {
     path.extension().map(OsStr::to_os_string) == Some("lua".into())
 }
 
@@ -55,9 +55,7 @@ pub fn code_to_funcs(file: &str) -> Vec<LuaFunction> {
         // puts the `end` on the back of the string
         .map(|str| concat_strings(str, "\nend".to_owned()))
         // String -> Result<LuaFunction, Error>
-        .map(|arg0| LuaFunction::from_str(&arg0))
-        // Result<LuaFunction, Error> -> LuaFunction (discards errors)
-        .flatten()
+        .flat_map(|arg0| LuaFunction::from_str(&arg0))
         // collect it into a list
         .collect()
 }

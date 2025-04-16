@@ -82,7 +82,7 @@ impl BabaMod {
             .all_relevant_files()
             .unwrap_or_default()
             .into_iter()
-            .filter(is_lua_file)
+            .filter(|path: &PathBuf| is_lua_file(path))
             .collect();
         if include_init {
             if let Some(config) = &self.config {
@@ -103,7 +103,7 @@ impl BabaMod {
             .all_relevant_files()
             .unwrap_or_default()
             .into_iter()
-            .filter(is_lua_file);
+            .filter(|path: &PathBuf| is_lua_file(path));
         for file in iter {
             let Ok(contents) = fs::read_to_string(file) else {
                 continue;

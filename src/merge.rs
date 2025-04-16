@@ -23,21 +23,14 @@ type DiffMode = diff_match_patch_rs::Compat;
 
 /// Attempts to merge two [`LuaFile`]s.
 /// # Semantics
-/// - The order of parameters matter - the two files are merged into one, with the
-/// left parameter coming first, and the second parameter coming after. In other words,
-/// the left parameter has priority.
-/// - Functions are only merged if they both override a function from Baba is You.
-/// Otherwise, they are renamed with additional suffixes - see [`LEFT_HAND_SUFFIX`] and [`RIGHT_HAND_SUFFIX`]
-/// for specifics on those values.
-/// - In the case where functions are merged, the file is ordered with the left file's data first,
-/// then merged data, then the right file's data.
+/// - The order of parameters matter - the two files are merged into one, with the left parameter coming first, and the second parameter coming after. In other words, the left parameter has priority.
+/// - Functions are only merged if they both override a function from Baba is You. Otherwise, they are renamed with additional suffixes - see [`LEFT_HAND_SUFFIX`] and [`RIGHT_HAND_SUFFIX`] for specifics on those values.
+/// - In the case where functions are merged, the file is ordered with the left file's data first, then merged data, then the right file's data.
 /// # Errors
 /// This function will only error if merging is not possible in some way, shape, or form.
 /// Specifics:
-/// - Will return [`ModdingError::RenameError`] if, while attempting to merge an Injected and Overridden mod
-/// (see below), the dictionary of renamed variables was not properly set in the mod with the injected function.
-/// - Will return [`BabaError::DmpError`] as per the specifications of [`merge_override_functions`] or [`merge_injected_functions`],
-/// depending on whether both mods use the Override or Injection method.
+/// - Will return [`ModdingError::RenameError`] if, while attempting to merge an Injected and Overridden mod (see below), the dictionary of renamed variables was not properly set in the mod with the injected function.
+/// - Will return [`BabaError::DmpError`] as per the specifications of [`merge_override_functions`] or [`merge_injected_functions`], depending on whether both mods use the Override or Injection method.
 /// ## Override vs Injection
 /// When it comes to baba modding, there are two ways to replace a function native to baba.
 /// While they are unnamed, the first way is known to this program as the "override" method.
@@ -76,7 +69,6 @@ type DiffMode = diff_match_patch_rs::Compat;
 ///     -- The program does this automatically
 /// end
 /// ```
-#[must_use]
 pub fn merge_files(
     left_file: LuaFile,
     right_file: LuaFile,
@@ -178,8 +170,7 @@ pub fn merge_files(
 /// # Prereqs
 /// - Both functions should be checked beforehand to ensure they do not use the injection method.
 /// - Additionally, both functions should have the same [`crate::mods::LuaFuncDef`].
-/// - The third parameter should have at least one [`LuaFunction`] that has the same definition
-/// as the other two
+/// - The third parameter should have at least one [`LuaFunction`] that has the same definition as the other two
 ///
 /// # Errors
 /// This errors under a couple circumstances:
@@ -210,7 +201,7 @@ pub fn merge_override_functions(
         match diff.op() {
             // In the case of removal, we want to immediately quit
             // since mods that remove code probably don't want to be merged
-            Ops::Delete => return Err(BabaError::ModdingError(ModdingError::CodeRemoval)),
+            Ops::Delete => return Err(BabaError::Modding(ModdingError::CodeRemoval)),
             Ops::Equal | Ops::Insert => continue,
         }
     }
@@ -221,8 +212,7 @@ pub fn merge_override_functions(
 /// # Prereqs
 /// - Both functions should be checked beforehand to ensure they do not use the override method.
 /// - Additionally, both functions should have the same [`crate::mods::LuaFuncDef`].
-/// - The third parameter should have at least one [`LuaFunction`] that has the same definition
-/// as the other two
+/// - The third parameter should have at least one [`LuaFunction`] that has the same definition as the other two
 ///
 /// # Errors
 /// This errors under a couple circumstances:
@@ -263,7 +253,7 @@ fn merge_functions_via_dmp(
     let (result, flags) = dmp.patch_apply(&patches, left.code())?;
     for flag in flags {
         if !flag {
-            return Err(BabaError::ModdingError(ModdingError::IncompletePatching));
+            return Err(BabaError::Modding(ModdingError::IncompletePatching));
         }
     }
     Ok(result.parse()?)
@@ -297,8 +287,8 @@ fn config_from_two_mods(left: &BabaMod, right: &BabaMod) -> Config {
     });
 
     // this function *should not fail* so we should abort early if needed
-    let result = serde_json::from_value(config).expect("Given `config` binding in this function should always be able to be parsed into a `Config` structure");
-    result
+
+    serde_json::from_value(config).expect("Given `config` binding in this function should always be able to be parsed into a `Config` structure")
 }
 
 /// Merges two mods, creating a new one in the same folder.
