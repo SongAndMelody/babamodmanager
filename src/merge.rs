@@ -1,10 +1,10 @@
-use crate::{
-    error::BabaError,
-    files::{BabaMod, LuaFile},
-    mods::{concat_strings, Config, LuaFunction, ModdingError},
-};
-
 use diff_match_patch_rs::{DiffMatchPatch, PatchInput};
+
+use crate::{
+    error::{babaerror::BabaError, moddingerror::ModdingError},
+    files::luafile::LuaFile,
+    mods::{babamod::BabaMod, concat_strings, config::Config, luafunction::LuaFunction},
+};
 
 /// Defines the prefix of a lua function,
 /// if duplicates are found, and it is
@@ -269,15 +269,6 @@ fn merge_functions_via_dmp(
     Ok(result.parse()?)
 }
 
-/// Merges two mods, creating a new one
-pub fn merge_mods(
-    _left: &BabaMod,
-    _right: &BabaMod,
-    _funcs: Vec<LuaFunction>,
-) -> Result<BabaMod, BabaError> {
-    todo!()
-}
-
 fn config_from_two_mods(left: &BabaMod, right: &BabaMod) -> Config {
     let id = concat_strings(left.mod_id(), right.mod_id()).replace('\n', "");
     let left_name = left.name();
@@ -306,6 +297,17 @@ fn config_from_two_mods(left: &BabaMod, right: &BabaMod) -> Config {
     });
 
     // this function *should not fail* so we should abort early if needed
-    let result = serde_json::from_value(config).unwrap();
+    let result = serde_json::from_value(config).expect("Given `config` binding in this function should always be able to be parsed into a `Config` structure");
     result
+}
+
+/// Merges two mods, creating a new one in the same folder.
+pub fn merge_mods(
+    left: &BabaMod,
+    right: &BabaMod,
+    _funcs: Vec<LuaFunction>,
+) -> Result<BabaMod, BabaError> {
+    let _config = config_from_two_mods(left, right);
+
+    todo!()
 }

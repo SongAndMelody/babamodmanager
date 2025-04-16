@@ -3,50 +3,14 @@ use std::{fs, io, path::PathBuf};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    error::BabaError,
-    files::{editor_functions, LuaFile},
-    levelpack::{Levelpack, LevelpackError},
+    error::{babaerror::BabaError, levelpackerror::LevelpackError},
+    levelpack::levelpack::Levelpack,
 };
 
-/// A list of "reserved" names that are used by baba.
-/// - `baba`, `museum`, and `new_adv` are used to hold data for the game's three campaigns
-/// - `debug`, while not explicitly used by the game, is typically not shown to the player without modification
-/// - `levels` stores the player's one-off levels
-const RESERVED_PACK_NAMES: [&str; 5] = ["baba", "debug", "museum", "new_adv", "levels"];
-
-/// The steam path to Baba is You, if it was installed via steam
-const STEAM_PATH: &str = r"C:\Program Files (x86)\Steam\steamapps\common\Baba Is You";
-
-/// The names of all the baba files that contain overridable code.
-const BABA_LUA_FILE_NAMES: [&str; 27] = [
-    "blocks",
-    "changes",
-    "clears",
-    "colours",
-    "conditions",
-    "constants",
-    "convert",
-    "debug",
-    "dynamictiling",
-    "effects",
-    "ending",
-    "features",
-    "letterunits",
-    "load",
-    "map",
-    "mapcursor",
-    "menu",
-    "metadata",
-    "movement",
-    "rules",
-    "syntax",
-    "tools",
-    "undo",
-    "update",
-    "utf_decoder",
-    "values",
-    "vision",
-];
+use super::{
+    editorfuncs::editor_functions, luafile::LuaFile, BABA_LUA_FILE_NAMES, RESERVED_PACK_NAMES,
+    STEAM_PATH,
+};
 
 /// A representation of the Baba is You file structure.
 #[derive(Debug, Serialize, Deserialize)]

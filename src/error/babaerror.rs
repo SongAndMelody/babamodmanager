@@ -1,6 +1,7 @@
+use crate::error::moddingerror::ModdingError;
 use std::{fmt::Display, io};
 
-use crate::{levelpack::LevelpackError, mods::ModdingError};
+use super::levelpackerror::LevelpackError;
 
 /// A generic error that holds any given error that the program may arise
 #[derive(Debug)]
