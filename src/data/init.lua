@@ -2,7 +2,7 @@
 -- it's wise not to touch it unless something is awry.
 
 -- This name will be replaced by a function call to the mod's folder.
--- if it says "__name__" then something has gone wrong
+-- if it says "__ name __" (without spaces) then something has gone wrong
 if __name__ then
     __name__()
 end
