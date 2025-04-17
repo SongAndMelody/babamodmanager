@@ -2,7 +2,7 @@ use std::{fs, path::PathBuf};
 
 use crate::{
     error::{babaerror::BabaError, moddingerror::ModdingError},
-    files::CONFIG_FILE_NAME,
+    files::{writeinto::WriteInto, CONFIG_FILE_NAME},
 };
 
 /// Represents a configuration file for a mod, unique to the manager.
@@ -57,6 +57,16 @@ impl Config {
         self.init.clone()
     }
 
+    /// Returns a [String] path that would be suitable for creating an init file from.
+    /// If an init file is already defined, returns that init file.
+    /// Otherwise, returns a formatted name for the file.
+    pub fn suitable_init(&self) -> String {
+        match self.init() {
+            Some(init) => init,
+            None => format!(".\\{}_init.lua", self.modid),
+        }
+    }
+
     pub fn modid(&self) -> String {
         self.modid.clone()
     }
@@ -80,5 +90,13 @@ impl Config {
     pub fn from_json(value: serde_json::Value) -> Result<Self, BabaError> {
         let config: Config = serde_json::from_value(value)?;
         Ok(config)
+    }
+}
+
+impl WriteInto for Config {
+    const FILE_NAME: &str = CONFIG_FILE_NAME;
+
+    fn as_file(&self) -> String {
+        serde_json::to_string(self).unwrap_or("{}".to_owned())
     }
 }

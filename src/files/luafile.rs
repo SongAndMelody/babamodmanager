@@ -1,14 +1,19 @@
 use std::{
     collections::{HashMap, HashSet},
     convert::Infallible,
+    fs,
+    path::PathBuf,
     str::FromStr,
 };
 
 use serde::{Deserialize, Serialize};
 
-use crate::mods::{
-    baba_function_names, code_to_funcs, luafuncdef::LuaFuncDef, luafunction::LuaFunction,
+use crate::{
+    error::babaerror::BabaError,
+    mods::{baba_function_names, code_to_funcs, luafuncdef::LuaFuncDef, luafunction::LuaFunction},
 };
+
+use super::writeinto::WriteInto;
 
 /// A representation of an entire lua file.
 ///
@@ -79,10 +84,7 @@ impl LuaFile {
     /// This takes a `&str` for generalized use.
     pub fn function_uses_injection_str(&self, func_name: &str) -> bool {
         self.renamed_functions.contains_key(func_name)
-            || self
-                .renamed_functions
-                .values()
-                .any(|y| *y == func_name)
+            || self.renamed_functions.values().any(|y| *y == func_name)
     }
 
     /// Grabs the renamed function for a given definition, if it exists.
@@ -130,5 +132,22 @@ impl From<String> for LuaFile {
 impl From<&str> for LuaFile {
     fn from(value: &str) -> Self {
         value.parse().unwrap()
+    }
+}
+
+impl TryFrom<PathBuf> for LuaFile {
+    type Error = BabaError;
+
+    fn try_from(value: PathBuf) -> Result<Self, Self::Error> {
+        let Ok(val) = fs::read_to_string(value)?.parse();
+        Ok(val)
+    }
+}
+
+impl WriteInto for LuaFile {
+    const FILE_NAME: &str = "file.lua";
+
+    fn as_file(&self) -> String {
+        self.code()
     }
 }

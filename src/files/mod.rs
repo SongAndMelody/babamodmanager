@@ -1,6 +1,7 @@
 pub mod babafiles;
 pub mod editorfuncs;
 pub mod luafile;
+pub mod writeinto;
 
 /// The name of the config file.
 /// This should be located inside of the mod folder (i.e. `Lua\[mod]\[this value]`)

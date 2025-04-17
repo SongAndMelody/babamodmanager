@@ -6,7 +6,7 @@ use crate::error::moddingerror::ModdingError;
 
 use super::{code_to_funcs, luafuncdef::LuaFuncDef};
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub struct LuaFunction {
     definition: LuaFuncDef,
     code: String,

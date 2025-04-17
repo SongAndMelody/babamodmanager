@@ -1,8 +1,15 @@
-use std::{collections::HashSet, fs, path::PathBuf};
+use std::{collections::HashSet, fs, path::PathBuf, str::FromStr};
 
-use crate::{error::babaerror::BabaError, files::CONFIG_FILE_NAME};
+use crate::{
+    error::babaerror::BabaError,
+    files::{luafile::LuaFile, writeinto::WriteInto, CONFIG_FILE_NAME},
+    merge::mergeoptions::MergeOptions,
+};
 
-use super::{config::Config, functions_from_string, is_lua_file, luafuncdef::LuaFuncDef};
+use super::{
+    config::Config, functions_from_string, is_lua_file, luafuncdef::LuaFuncDef,
+    luafunction::LuaFunction,
+};
 
 /// Represents a Mod in Baba is You
 #[derive(Debug)]
@@ -30,6 +37,47 @@ impl BabaMod {
             .unwrap_or("[No name Given!]".to_owned());
         let config = Config::new(path.join(CONFIG_FILE_NAME)).ok();
         Self { path, config, name }
+    }
+
+    /// Partially initializes a mod.
+    /// Do not use this; use [BabaMod::init] or [BabaMod::init_with_options]
+    fn partial_init(path: &mut PathBuf, config: &Config) -> Result<String, BabaError> {
+        let mod_id = config.modid();
+        let init_file_path = config.suitable_init();
+        let init_file = include_str!("../../src/data/init.lua").replace("__name__", &mod_id);
+        init_file.write_into_using(&*path, &init_file_path)?;
+        path.push(&mod_id);
+        fs::create_dir(&*path)?;
+        config.write_into(&*path)?;
+        Ok(mod_id)
+    }
+
+    /// Initializes a new mod, given a single lua file, a path to put it in, and a config
+    pub fn init(file: LuaFile, mut path: PathBuf, config: Config) -> Result<Self, BabaError> {
+        let mod_id = Self::partial_init(&mut path, &config)?;
+        // lua file
+        file.write_into(&path)?;
+        Ok(Self {
+            path,
+            config: Some(config),
+            name: mod_id,
+        })
+    }
+
+    /// Initializes a new mod, given a single lua file, a path to put it in, a config, and [MergeOptions].
+    pub fn init_with_options(
+        file: LuaFile,
+        mut path: PathBuf,
+        config: Config,
+        options: MergeOptions,
+    ) -> Result<Self, BabaError> {
+        let mod_id = Self::partial_init(&mut path, &config)?;
+        file.write_into_using(&path, &options.file_name)?;
+        Ok(Self {
+            path,
+            config: Some(config),
+            name: mod_id,
+        })
     }
 
     /// Reports whether the mod is a singleton (i.e. a standalone lua file)
@@ -76,8 +124,8 @@ impl BabaMod {
         Ok(result)
     }
 
-    /// Returns a vector of all lua files that the mod uses.
-    pub fn lua_files(&self, include_init: bool) -> Vec<PathBuf> {
+    /// Returns a vector of all lua file paths that the mod uses.
+    pub fn lua_file_paths(&self, include_init: bool) -> Vec<PathBuf> {
         let mut result: Vec<PathBuf> = self
             .all_relevant_files()
             .unwrap_or_default()
@@ -94,10 +142,19 @@ impl BabaMod {
         result
     }
 
+    // Returns a vector of all lua files that the mod uses.
+    pub fn lua_files(&self, include_init: bool) -> Vec<LuaFile> {
+        self.lua_file_paths(include_init)
+            .into_iter()
+            .map(LuaFile::try_from)
+            .flatten()
+            .collect()
+    }
+
     /// Returns a set of functions that the mod defines.
     /// This is a [`HashSet`] of [`LuaFuncDef`]s, best for comparing
     /// this mod against another.
-    pub fn defined_functions(&self) -> HashSet<LuaFuncDef> {
+    pub fn defined_function_definitions(&self) -> HashSet<LuaFuncDef> {
         let mut result = HashSet::new();
         let iter = self
             .all_relevant_files()
@@ -110,6 +167,25 @@ impl BabaMod {
             };
             let set = functions_from_string(&contents);
             result = result.union(&set).map(Clone::clone).collect();
+        }
+        result
+    }
+
+    pub fn defined_functions(&self) -> HashSet<LuaFunction> {
+        let mut result = HashSet::new();
+        let iter = self
+            .all_relevant_files()
+            .unwrap_or_default()
+            .into_iter()
+            .filter(|path: &PathBuf| is_lua_file(path));
+        for file in iter {
+            let Ok(contents) = fs::read_to_string(file) else {
+                continue;
+            };
+            let Ok(file) = LuaFile::from_str(&contents);
+            for func in file.functions() {
+                result.insert(func);
+            }
         }
         result
     }
@@ -138,8 +214,8 @@ impl BabaMod {
     /// Returns whether this mod is compatible with another mod
     /// via way of function overrides & sprite checks.
     pub fn is_compatible_with(&self, other: &Self) -> bool {
-        self.defined_functions()
-            .is_disjoint(&other.defined_functions())
+        self.defined_function_definitions()
+            .is_disjoint(&other.defined_function_definitions())
             && self
                 .sprites_by_name()
                 .unwrap_or_default()

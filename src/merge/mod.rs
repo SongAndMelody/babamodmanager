@@ -1,4 +1,7 @@
+pub mod mergeoptions;
+
 use diff_match_patch_rs::{DiffMatchPatch, PatchInput};
+use mergeoptions::MergeOptions;
 
 use crate::{
     error::{babaerror::BabaError, moddingerror::ModdingError},
@@ -19,6 +22,7 @@ const RIGHT_HAND_SUFFIX: &str = "_right";
 /// This can be one of two types:
 /// - [`diff_match_patch_rs::Compat`] - return types deal with [`char`]s and slices thereof.
 /// - [`diff_match_patch_rs::Efficient`] - return types deal exclusively in `&[u8]` slices.
+/// As per the reccomendation of the library, we are using Compat mode. Effecient mode may be used if it increases the program's efficiency.
 type DiffMode = diff_match_patch_rs::Compat;
 
 /// Attempts to merge two [`LuaFile`]s.
@@ -52,13 +56,13 @@ type DiffMode = diff_match_patch_rs::Compat;
 /// local oldinit = init
 /// function init(args...)
 ///     do_something()
-///     init(args...)
+///     oldinit(args...)
 /// end
 /// ```
 /// This is generally used as a way to make mod merging easier. Nontheless, this function
 /// supports both types of function replacement, and can also work via mix-and-matching with
 /// a custom merging solution (via way of including both the modified code, and the injection function).
-/// ## UNusual Function Declarations
+/// ## Unusual Function Declarations
 /// Any of the following are not supported, but can be easily refactored into either one of the other two.
 /// ```lua
 /// -- "Direct Injection"
@@ -295,9 +299,27 @@ fn config_from_two_mods(left: &BabaMod, right: &BabaMod) -> Config {
 pub fn merge_mods(
     left: &BabaMod,
     right: &BabaMod,
-    _funcs: Vec<LuaFunction>,
+    funcs: Vec<LuaFunction>,
+    options: MergeOptions,
 ) -> Result<BabaMod, BabaError> {
-    let _config = config_from_two_mods(left, right);
+    let config = config_from_two_mods(left, right);
+    let init = options.include_init;
+    let left_files = left.lua_files(init);
+    let right_files = right.lua_files(init);
 
-    todo!()
+    let folding_function = |accum: Result<_, _>, next| match accum
+        .map(|current_file| merge_files(current_file, next, &funcs))
+    {
+        Ok(c) => match c {
+            Ok(file) => Ok(file),
+            Err(error) => Err(error),
+        },
+        Err(error) => Err(error),
+    };
+    let fold: Result<LuaFile, BabaError> = left_files
+        .into_iter()
+        .chain(right_files)
+        .fold(Ok(LuaFile::from("")), folding_function);
+    let resultant_file = fold?;
+    BabaMod::init_with_options(resultant_file, options.location.clone(), config, options)
 }
