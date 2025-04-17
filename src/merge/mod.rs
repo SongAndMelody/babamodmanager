@@ -291,7 +291,6 @@ fn config_from_two_mods(left: &BabaMod, right: &BabaMod) -> Config {
     });
 
     // this function *should not fail* so we should abort early if needed
-
     serde_json::from_value(config).expect("Given `config` binding in this function should always be able to be parsed into a `Config` structure")
 }
 

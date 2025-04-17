@@ -52,7 +52,7 @@ impl Display for BabaError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let message = match self {
             BabaError::Levelpack(levelpack_error) => format!("{}", levelpack_error),
-            BabaError::IO(error) => format!("Error when working with files:\n{}", error),
+            BabaError::IO(error) => format!("Error when working with io:\n{}", error),
             BabaError::Modding(modding_error) => format!("{}", modding_error),
             BabaError::SerdeJson(error) => format!("Error when parsing json:\n{}", error),
             BabaError::Dmp(error) => format!("Error when merging files:\n{:#?}", error),
