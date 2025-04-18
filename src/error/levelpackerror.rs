@@ -1,7 +1,9 @@
 use std::{fmt::Display, path::PathBuf};
 
+use thiserror::Error;
+
 /// Error that might arise when trying to do stuff with levelpacks
-#[derive(Debug)]
+#[derive(Debug, Error)]
 pub enum LevelpackError {
     /// The requested levelpack does not exist
     LevelpackDoesNotExist(PathBuf),

@@ -1,7 +1,9 @@
 use std::{fmt::Display, path::PathBuf};
 
+use thiserror::Error;
+
 /// An error arised when dealing with mods
-#[derive(Debug)]
+#[derive(Debug, Error)]
 pub enum ModdingError {
     /// The specified file was not a config file
     NotAConfigFile(PathBuf),

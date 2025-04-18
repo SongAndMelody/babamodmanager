@@ -1,7 +1,14 @@
-use egui::{ecolor::{HexColor as Color, ParseHexColorError}, ColorImage};
+use std::path::Path;
+
+use egui::{
+    ecolor::HexColor as Color,
+    ColorImage,
+};
 use serde::{Deserialize, Serialize};
 
 use crate::error::applicationerror::ApplicationError;
+
+use super::load_image_from_path;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ThemeData {
@@ -9,7 +16,7 @@ pub struct ThemeData {
     dark_accent: Color,  //1,0
     light: Color,        //0,3
     light_accent: Color, //0,2
-    grey: Color,         //0,2
+    grey: Color,         //0,1
 
     error: Color,        //2,1
     warning: Color,      //2,4
@@ -23,7 +30,7 @@ pub struct ThemeData {
 }
 
 impl ThemeData {
-    pub fn new(data: [&str; 13]) -> Result<Self, ParseHexColorError>  {
+    pub fn new(data: [&str; 13]) -> Result<Self, ApplicationError> {
         Ok(Self {
             dark: data[0].parse()?,
             dark_accent: data[1].parse()?,
@@ -39,6 +46,10 @@ impl ThemeData {
             blossom: data[11].parse()?,
             bonus: data[12].parse()?,
         })
+    }
+    pub fn from_image_file(file: &Path) -> Result<Self, ApplicationError> {
+        let image = load_image_from_path(file)?;
+        image.try_into()
     }
 }
 
@@ -66,6 +77,31 @@ impl TryFrom<ColorImage> for ThemeData {
     type Error = ApplicationError;
 
     fn try_from(value: ColorImage) -> Result<Self, Self::Error> {
-        todo!()
+        let pixels = value
+            .pixels
+            .into_iter()
+            .map(|pixel| Color::Hex4(pixel))
+            .collect::<Vec<_>>();
+        const fn pixel_index(x: usize, y: usize) -> usize {
+            (x * 7) + y
+        }
+        if pixels.len() < pixel_index(6, 4) {
+            return Err(ApplicationError::ImageSize);
+        }
+        Ok(Self {
+            dark: pixels[pixel_index(0, 0)],
+            dark_accent: pixels[pixel_index(1, 0)],
+            light: pixels[pixel_index(0, 3)],
+            light_accent: pixels[pixel_index(0, 2)],
+            grey: pixels[pixel_index(0, 1)],
+            error: pixels[pixel_index(2, 1)],
+            warning: pixels[pixel_index(2, 4)],
+            accept: pixels[pixel_index(5, 2)],
+            link: pixels[pixel_index(1, 4)],
+            link_visited: pixels[pixel_index(1, 2)],
+            spore: pixels[pixel_index(3, 4)],
+            blossom: pixels[pixel_index(4, 2)],
+            bonus: pixels[pixel_index(4, 1)],
+        })
     }
 }

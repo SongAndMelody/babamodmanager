@@ -1,23 +1,25 @@
+use thiserror::Error;
+
 use crate::error::moddingerror::ModdingError;
 use std::{fmt::Display, io};
 
 use super::{applicationerror::ApplicationError, levelpackerror::LevelpackError};
 
 /// A generic error that holds any given error that the program may arise
-#[derive(Debug)]
+#[derive(Debug, Error)]
 pub enum BabaError {
     /// There was an issue with fetching levelpacks
-    Levelpack(LevelpackError),
+    Levelpack(#[from] LevelpackError),
     /// There was an error when using [`io`] or working with files
     IO(io::Error),
     /// There was an error when fetching or working with mods
-    Modding(ModdingError),
+    Modding(#[from] ModdingError),
     /// There was an error when using [`serde_json`]
     SerdeJson(serde_json::Error),
     /// There was an error when using [`diff_match_patch_rs`]
     Dmp(diff_match_patch_rs::Error),
     /// An error arose from the application itself (usually the UI side of things)
-    Application(ApplicationError),
+    Application(#[from] ApplicationError),
 }
 
 impl From<diff_match_patch_rs::Error> for BabaError {
@@ -26,21 +28,9 @@ impl From<diff_match_patch_rs::Error> for BabaError {
     }
 }
 
-impl From<LevelpackError> for BabaError {
-    fn from(value: LevelpackError) -> Self {
-        Self::Levelpack(value)
-    }
-}
-
 impl From<io::Error> for BabaError {
     fn from(value: io::Error) -> Self {
         Self::IO(value)
-    }
-}
-
-impl From<ModdingError> for BabaError {
-    fn from(value: ModdingError) -> Self {
-        Self::Modding(value)
     }
 }
 
