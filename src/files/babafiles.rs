@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     error::{babaerror::BabaError, levelpackerror::LevelpackError},
-    levelpack::levelpackrepr::LevelpackRepr,
+    levelpack::levelpackrepr::LevelpackRepr, mods::luafunction::LuaFunction,
 };
 
 use super::{
@@ -113,6 +113,15 @@ impl BabaFiles {
             .flat_map(fs::read_to_string)
             .chain(editor_functions().unwrap_or_default())
             .map(Into::into)
+            .collect()
+    }
+
+    pub fn native_baba_lua_functions(&self) -> Vec<LuaFunction> {
+        self.native_baba_lua_files()
+            .into_iter()
+            .map(|file| file.functions())
+            .flatten()
+            .filter(|func| func.definition().is_baba_native())
             .collect()
     }
 }

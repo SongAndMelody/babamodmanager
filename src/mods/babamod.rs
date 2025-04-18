@@ -2,8 +2,8 @@ use std::{collections::HashSet, fs, path::PathBuf, str::FromStr};
 
 use crate::{
     error::babaerror::BabaError,
-    files::{luafile::LuaFile, writeinto::WriteInto, CONFIG_FILE_NAME},
-    merge::mergeoptions::MergeOptions,
+    files::{babafiles::BabaFiles, luafile::LuaFile, writeinto::WriteInto, CONFIG_FILE_NAME},
+    merge::{merge_mods, mergeoptions::MergeOptions},
 };
 
 use super::{
@@ -249,5 +249,9 @@ impl BabaMod {
             Some(config) => config.description(),
             None => "No description given...".to_owned(),
         }
+    }
+
+    pub fn merge_with(&self, other: &BabaMod, files: &BabaFiles, options: MergeOptions) -> Result<BabaMod, BabaError> {
+        merge_mods(self, other, files.native_baba_lua_functions(), options)
     }
 }

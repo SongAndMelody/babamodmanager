@@ -1,7 +1,7 @@
 use crate::error::moddingerror::ModdingError;
 use std::{fmt::Display, io};
 
-use super::levelpackerror::LevelpackError;
+use super::{applicationerror::ApplicationError, levelpackerror::LevelpackError};
 
 /// A generic error that holds any given error that the program may arise
 #[derive(Debug)]
@@ -16,6 +16,8 @@ pub enum BabaError {
     SerdeJson(serde_json::Error),
     /// There was an error when using [`diff_match_patch_rs`]
     Dmp(diff_match_patch_rs::Error),
+    /// An error arose from the application itself (usually the UI side of things)
+    Application(ApplicationError),
 }
 
 impl From<diff_match_patch_rs::Error> for BabaError {
@@ -56,6 +58,7 @@ impl Display for BabaError {
             BabaError::Modding(modding_error) => format!("{}", modding_error),
             BabaError::SerdeJson(error) => format!("Error when parsing json:\n{}", error),
             BabaError::Dmp(error) => format!("Error when merging files:\n{:#?}", error),
+            BabaError::Application(application_error) => format!("Application error:\n{}", application_error),
         };
         write!(f, "{}", message)
     }
