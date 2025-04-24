@@ -34,7 +34,7 @@ impl BabaFiles {
     /// - The file operation returns an error (returns that error in `Err(Some(e))`)
     pub fn from_steam() -> Result<Self, Option<io::Error>> {
         let steam_path = PathBuf::from(STEAM_PATH);
-        match fs::exists(steam_path.clone()) {
+        match fs::exists(&steam_path) {
             Ok(true) => Ok(Self::from_raw(steam_path)),
             Ok(false) => Err(None),
             Err(e) => Err(Some(e)),
