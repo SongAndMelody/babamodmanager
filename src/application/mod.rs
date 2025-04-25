@@ -1,6 +1,14 @@
-pub mod appstate;
-pub mod appoptions;
+use std::fs;
+
+use egui::{epaint::text::FontInsert, FontData};
+use themedata::ThemeData;
+
+use crate::error::babaerror::BabaError;
+
 pub mod app;
+pub mod appoptions;
+pub mod appstate;
+pub mod status;
 pub mod themedata;
 
 /// Taken from the documentation for [`egui::ColorImage::from_rgba_unmultiplied`]
@@ -13,4 +21,29 @@ pub fn load_image_from_path(path: &std::path::Path) -> Result<egui::ColorImage, 
         size,
         pixels.as_slice(),
     ))
+}
+
+pub fn load_fonts() -> Result<Vec<FontInsert>, BabaError> {
+    let mut result = Vec::new();
+    for file in fs::read_dir("src\\data\\fonts")? {
+        let file = file?;
+        let data = fs::read(file.path())?;
+        let name = file.file_name().into_string().unwrap_or("".to_owned());
+        result.push(FontInsert {
+            name,
+            data: FontData::from_owned(data),
+            families: Vec::new(),
+        })
+    }
+    Ok(result)
+}
+
+pub fn load_themes() -> Result<Vec<ThemeData>, BabaError> {
+    let mut result = Vec::new();
+    for file in fs::read_dir("src\\data\\palettes")? {
+        let file = file?;
+        let theme = ThemeData::from_image_file(&file.path())?;
+        result.push(theme);
+    }
+    Ok(result)
 }

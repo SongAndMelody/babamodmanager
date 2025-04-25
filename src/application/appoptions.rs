@@ -4,6 +4,7 @@ use super::themedata::ThemeData;
 
 #[derive(Default, Debug, Serialize, Deserialize)]
 pub struct AppOptions {
-    theme: ThemeData,
-    light_mode: bool,
+    pub theme: ThemeData,
+    pub light_mode: bool,
+    pub font: String,
 }

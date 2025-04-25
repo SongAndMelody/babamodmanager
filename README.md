@@ -36,4 +36,18 @@ Set up your mod like so in the file system:
 
 ## Attribution
 
+### Fonts
+
 The Baba is You font was taken from the Robot is Chill repository: <https://github.com/ROBOT-IS-CHILL/robot-is-chill/blob/main/data/fonts/ui.ttf>
+
+LibMono, LibSans, and LibSerif are all from the Liberation Font Series: <https://github.com/liberationfonts>
+
+Dyslecic and DyslexicMono are from OpenDyslexic: <https://opendyslexic.org/>
+
+### Palettes
+
+Abstract, Autumn, Crystal, Default, Factory, garden, High Contrast, Marshmallow, Monochromatic Grey, Monochromatic Red, Mountain, Ocean, Ruins, Space, Swamp, Vibrant and Volcano are all taken directly from Baba is You.
+
+Pico-8 and Win95 are taken from their respective operating systems' palettes.
+
+Sheaflet's colors are taken from [Rosy42](https://lospec.com/palette-list/rosy-42) by PineappleOnPizza.

@@ -14,3 +14,7 @@ Contains a list of all 338 overridable Baba is You functions. These are used oft
 ## init.lua
 
 This file is similarly used when merging two mods, calling into a function in the directory for easy use.
+
+## fonts
+
+A folder containing some fonts the program uses.
