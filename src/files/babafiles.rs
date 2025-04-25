@@ -119,8 +119,7 @@ impl BabaFiles {
     pub fn native_baba_lua_functions(&self) -> Vec<LuaFunction> {
         self.native_baba_lua_files()
             .into_iter()
-            .map(|file| file.functions())
-            .flatten()
+            .flat_map(|file| file.functions())
             .filter(|func| func.definition().is_baba_native())
             .collect()
     }

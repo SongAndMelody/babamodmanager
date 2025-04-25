@@ -146,8 +146,7 @@ impl BabaMod {
     pub fn lua_files(&self, include_init: bool) -> Vec<LuaFile> {
         self.lua_file_paths(include_init)
             .into_iter()
-            .map(LuaFile::try_from)
-            .flatten()
+            .flat_map(LuaFile::try_from)
             .collect()
     }
 

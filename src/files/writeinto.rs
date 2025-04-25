@@ -39,7 +39,7 @@ impl WriteInto for String {
     }
 }
 
-impl<'a> WriteInto for &'a str {
+impl WriteInto for &str {
     const FILE_NAME: &'static str = "file.txt";
 
     fn as_file(&self) -> String {

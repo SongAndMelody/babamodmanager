@@ -80,7 +80,7 @@ impl TryFrom<ColorImage> for ThemeData {
         let pixels = value
             .pixels
             .into_iter()
-            .map(|pixel| Color::Hex4(pixel))
+            .map(Color::Hex4)
             .collect::<Vec<_>>();
         const fn pixel_index(x: usize, y: usize) -> usize {
             (x * 7) + y

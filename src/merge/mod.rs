@@ -22,7 +22,7 @@ const RIGHT_HAND_SUFFIX: &str = "_right";
 /// This can be one of two types:
 /// - [`diff_match_patch_rs::Compat`] - return types deal with [`char`]s and slices thereof.
 /// - [`diff_match_patch_rs::Efficient`] - return types deal exclusively in `&[u8]` slices.
-/// As per the reccomendation of the library, we are using Compat mode. Effecient mode may be used if it increases the program's efficiency.
+///   As per the reccomendation of the library, we are using Compat mode. Effecient mode may be used if it increases the program's efficiency.
 type DiffMode = diff_match_patch_rs::Compat;
 
 /// Attempts to merge two [`LuaFile`]s.
