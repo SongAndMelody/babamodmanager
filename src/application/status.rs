@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::error::babaerror::BabaError;
 
-use super::{appoptions::AppOptions, appstate::AppState, load_fonts, load_themes};
+use super::{activeapp::ActiveApp, appoptions::AppOptions, appstate::AppState};
 
 #[derive(Debug, Default, Serialize, Deserialize)]
 pub enum Status {
@@ -15,35 +15,17 @@ pub enum Status {
     About,
     /// An overview of all the baba files and such
     Overview,
-    /// closing work
-    Shutdown,
 }
 
 impl Status {
     pub fn render(
         &mut self,
         ctx: &egui::Context,
-        _frame: &mut eframe::Frame,
+        frame: &mut eframe::Frame,
         state: &mut AppState,
         options: &mut AppOptions,
     ) -> Result<(), BabaError> {
-        match self {
-            Status::Startup => {
-                // application setup: load palettes
-                let palettes = load_themes()?;
-                state.palettes = palettes;
-                // load fonts
-                for font in load_fonts()? {
-                    if font.name == options.font {
-                        ctx.add_font(font);
-                    }
-                }
-            }
-            Status::Settings => {}
-            Status::About => {}
-            Status::Overview => {}
-            Status::Shutdown => {},
-        }
-        Ok(())
+        let mut active = ActiveApp::new(ctx, frame, state, self, options);
+        active.render()
     }
 }

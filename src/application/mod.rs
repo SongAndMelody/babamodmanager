@@ -10,6 +10,7 @@ pub mod appoptions;
 pub mod appstate;
 pub mod status;
 pub mod themedata;
+pub mod activeapp;
 
 /// Taken from the documentation for [`egui::ColorImage::from_rgba_unmultiplied`]
 pub fn load_image_from_path(path: &std::path::Path) -> Result<egui::ColorImage, image::ImageError> {
