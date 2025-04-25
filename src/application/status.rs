@@ -15,13 +15,15 @@ pub enum Status {
     About,
     /// An overview of all the baba files and such
     Overview,
+    /// closing work
+    Shutdown,
 }
 
 impl Status {
     pub fn render(
         &mut self,
         ctx: &egui::Context,
-        frame: &mut eframe::Frame,
+        _frame: &mut eframe::Frame,
         state: &mut AppState,
         options: &mut AppOptions,
     ) -> Result<(), BabaError> {
@@ -29,7 +31,7 @@ impl Status {
             Status::Startup => {
                 // application setup: load palettes
                 let palettes = load_themes()?;
-                state.set_themes(palettes);
+                state.palettes = palettes;
                 // load fonts
                 for font in load_fonts()? {
                     if font.name == options.font {
@@ -40,6 +42,7 @@ impl Status {
             Status::Settings => {}
             Status::About => {}
             Status::Overview => {}
+            Status::Shutdown => {},
         }
         Ok(())
     }

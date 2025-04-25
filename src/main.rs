@@ -1,4 +1,8 @@
+//! See the readme for more information on this crate.
+//! It is not intended to be used as a library.
+
 #![allow(dead_code)]
+#![warn(missing_docs)]
 
 mod application;
 mod error;
