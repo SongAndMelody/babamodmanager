@@ -1,9 +1,6 @@
 use std::path::Path;
 
-use egui::{
-    ecolor::HexColor as Color,
-    ColorImage,
-};
+use egui::{ecolor::HexColor as Color, ColorImage};
 use serde::{Deserialize, Serialize};
 
 use crate::error::applicationerror::ApplicationError;

@@ -1,3 +1,5 @@
+use egui::{CentralPanel, Context, FullOutput, RawInput, Rect, SidePanel, TopBottomPanel};
+
 use crate::error::babaerror::BabaError;
 use std::fmt::Debug;
 
@@ -44,6 +46,11 @@ impl<'a> ActiveApp<'a> {
                 self.state.palettes = palettes;
                 // load font
                 self.load_currently_selected_font()?;
+                // startup options
+                self.run(|ctx| {
+                    central_panel().show(ctx, |ui| {
+                    });
+                });
             }
             Status::Settings => {}
             Status::About => {}
@@ -60,6 +67,25 @@ impl<'a> ActiveApp<'a> {
         }
         Ok(())
     }
+
+    pub fn run(&mut self, run_ui: impl FnMut(&Context)) -> FullOutput {
+        let input = RawInput::default();
+        self.ctx.run(input, run_ui)
+    }
+
+    pub fn rendering_area(&self) -> Rect {
+        self.ctx.screen_rect()
+    }
+
+    pub fn relative_coordinates_to_floaty(&self, x: f32, y: f32) -> (f32, f32) {
+        let area = self.rendering_area();
+        (area.width() * x, area.height() * y)
+    }
+
+    pub fn relative_coordinates_to_absolute(&self, x: f32, y: f32) -> (u64, u64) {
+        let area = self.rendering_area();
+        ((area.width() * x) as u64, (area.height() * y) as u64)
+    }
 }
 
 impl<'a> Debug for ActiveApp<'a> {
@@ -69,6 +95,26 @@ impl<'a> Debug for ActiveApp<'a> {
             .field("state", &self.state)
             .field("status", &self.status)
             .field("options", &self.options)
-            .finish()
+            .finish_non_exhaustive()
     }
+}
+
+fn side_panel_left(id: &'static str) -> SidePanel {
+    SidePanel::left(id)
+}
+
+fn side_panel_right(id: &'static str) -> SidePanel {
+    SidePanel::right(id)
+}
+
+fn top_panel(id: &'static str) -> TopBottomPanel {
+    TopBottomPanel::top(id)
+}
+
+fn bottom_panel(id: &'static str) -> TopBottomPanel {
+    TopBottomPanel::bottom(id)
+}
+
+fn central_panel() -> CentralPanel {
+    CentralPanel::default()
 }

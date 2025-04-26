@@ -1,16 +1,17 @@
 use std::fs;
 
-use egui::{epaint::text::FontInsert, FontData};
+use eframe::icon_data::from_png_bytes;
+use egui::{epaint::text::FontInsert, FontData, IconData};
 use themedata::ThemeData;
 
 use crate::error::babaerror::BabaError;
 
+pub mod activeapp;
 pub mod app;
 pub mod appoptions;
 pub mod appstate;
 pub mod status;
 pub mod themedata;
-pub mod activeapp;
 
 /// Taken from the documentation for [`egui::ColorImage::from_rgba_unmultiplied`]
 pub fn load_image_from_path(path: &std::path::Path) -> Result<egui::ColorImage, image::ImageError> {
@@ -47,6 +48,11 @@ pub fn load_themes() -> Result<Vec<ThemeData>, BabaError> {
         result.push(theme);
     }
     Ok(result)
+}
+
+pub fn icon() -> Result<IconData, BabaError> {
+    let icon = fs::read("src\\data\\icon.png")?;
+    Ok(from_png_bytes(&icon)?)
 }
 
 pub const fn pixel_index(x: usize, y: usize) -> usize {

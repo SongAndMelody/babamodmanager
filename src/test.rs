@@ -1,6 +1,6 @@
 #![cfg(test)]
 
-use crate::{application::{load_fonts, load_themes, pixel_index}, files::babafiles::BabaFiles, levelpack::fetch_field as ff, mods::config::Config};
+use crate::{application::{icon, load_fonts, load_themes, pixel_index}, files::babafiles::BabaFiles, levelpack::fetch_field as ff, mods::config::Config};
 
 /// Tests whether or not `fetch_field` returns an `Ok` variant
 #[test]
@@ -103,16 +103,22 @@ fn correct_amount_of_fonts() {
 }
 
 #[test]
-fn pixel_index_1() {
+fn pixel_index_generic() {
     assert_eq!(pixel_index(2, 1), 9)
 }
 
 #[test]
-fn pixel_index_2() {
+fn pixel_index_min() {
     assert_eq!(pixel_index(0, 0), 0)
 }
 
 #[test]
-fn pixel_index_3() {
+fn pixel_index_max() {
     assert_eq!(pixel_index(6, 4), 34)
+}
+
+#[test]
+fn icon_load() {
+    let icon = icon();
+    assert!(icon.is_ok(), "{:?}", icon)
 }

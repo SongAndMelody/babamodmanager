@@ -1,3 +1,4 @@
+use image::ImageError;
 use thiserror::Error;
 
 use crate::error::moddingerror::ModdingError;
@@ -21,7 +22,7 @@ pub enum BabaError {
     /// An error arose from the application itself (usually the UI side of things)
     Application(#[from] ApplicationError),
     /// An error came from eframe
-    EFrame(#[from] eframe::Error)
+    EFrame(#[from] eframe::Error),
 }
 
 impl From<diff_match_patch_rs::Error> for BabaError {
@@ -39,6 +40,12 @@ impl From<io::Error> for BabaError {
 impl From<serde_json::Error> for BabaError {
     fn from(value: serde_json::Error) -> Self {
         Self::SerdeJson(value)
+    }
+}
+
+impl From<ImageError> for BabaError {
+    fn from(value: ImageError) -> Self {
+        BabaError::Application(ApplicationError::ImageError(value))
     }
 }
 
