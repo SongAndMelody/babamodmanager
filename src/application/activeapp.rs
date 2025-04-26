@@ -52,7 +52,7 @@ impl<'a> ActiveApp<'a> {
         Ok(())
     }
 
-    fn load_currently_selected_font(&mut self) -> Result<(), BabaError> {
+    pub fn load_currently_selected_font(&mut self) -> Result<(), BabaError> {
         for font in load_fonts()? {
             if font.name == self.options.font {
                 self.ctx.add_font(font);

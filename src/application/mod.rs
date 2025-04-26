@@ -48,3 +48,7 @@ pub fn load_themes() -> Result<Vec<ThemeData>, BabaError> {
     }
     Ok(result)
 }
+
+pub const fn pixel_index(x: usize, y: usize) -> usize {
+    (y * 7) + x
+}

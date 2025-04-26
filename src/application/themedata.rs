@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::error::applicationerror::ApplicationError;
 
-use super::load_image_from_path;
+use super::{load_image_from_path, pixel_index};
 
 #[derive(Debug, Serialize, Deserialize, Clone, Copy)]
 pub struct ThemeData {
@@ -82,10 +82,8 @@ impl TryFrom<ColorImage> for ThemeData {
             .into_iter()
             .map(Color::Hex4)
             .collect::<Vec<_>>();
-        const fn pixel_index(x: usize, y: usize) -> usize {
-            (x * 7) + y
-        }
-        if pixels.len() < pixel_index(6, 4) {
+        // should be 35 different colors
+        if pixels.len() < 35 {
             return Err(ApplicationError::ImageSize);
         }
         Ok(Self {

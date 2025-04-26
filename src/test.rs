@@ -1,6 +1,6 @@
 #![cfg(test)]
 
-use crate::{files::babafiles::BabaFiles, levelpack::fetch_field as ff, mods::config::Config};
+use crate::{application::{load_fonts, load_themes, pixel_index}, files::babafiles::BabaFiles, levelpack::fetch_field as ff, mods::config::Config};
 
 /// Tests whether or not `fetch_field` returns an `Ok` variant
 #[test]
@@ -75,5 +75,44 @@ fn can_parse_config() {
       "sprites": ["[This is a set of sprites the mod uses]"]
     });
     let value = Config::from_json(json);
-    assert!(value.is_ok(), "{:?}", value.err());
+    assert!(value.is_ok(), "{:?}", value.err().unwrap());
+}
+
+#[test]
+fn load_palette_data() {
+    let value = load_themes();
+    assert!(value.is_ok(), "{:?}", value.err().unwrap())
+}
+
+#[test]
+fn correct_amount_of_palettes() {
+    let value = load_themes().unwrap();
+    assert!(value.len() == 20, "{:?}", value);
+}
+
+#[test]
+fn load_font_data() {
+    let value = load_fonts();
+    assert!(value.is_ok(), "{:?}", value.err().unwrap())
+}
+
+#[test]
+fn correct_amount_of_fonts() {
+    let value = load_fonts().unwrap();
+    assert!(value.len() == 6, "{:?}", value);
+}
+
+#[test]
+fn pixel_index_1() {
+    assert_eq!(pixel_index(2, 1), 9)
+}
+
+#[test]
+fn pixel_index_2() {
+    assert_eq!(pixel_index(0, 0), 0)
+}
+
+#[test]
+fn pixel_index_3() {
+    assert_eq!(pixel_index(6, 4), 34)
 }
