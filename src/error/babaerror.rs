@@ -20,6 +20,8 @@ pub enum BabaError {
     Dmp(diff_match_patch_rs::Error),
     /// An error arose from the application itself (usually the UI side of things)
     Application(#[from] ApplicationError),
+    /// An error came from eframe
+    EFrame(#[from] eframe::Error)
 }
 
 impl From<diff_match_patch_rs::Error> for BabaError {
@@ -49,6 +51,7 @@ impl Display for BabaError {
             BabaError::SerdeJson(error) => format!("Error when parsing json:\n{}", error),
             BabaError::Dmp(error) => format!("Error when merging files:\n{:#?}", error),
             BabaError::Application(application_error) => format!("Application error:\n{}", application_error),
+            BabaError::EFrame(error) => format!("Eframe error:\n{}", error),
         };
         write!(f, "{}", message)
     }

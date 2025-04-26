@@ -22,7 +22,8 @@ const RIGHT_HAND_SUFFIX: &str = "_right";
 /// This can be one of two types:
 /// - [`diff_match_patch_rs::Compat`] - return types deal with [`char`]s and slices thereof.
 /// - [`diff_match_patch_rs::Efficient`] - return types deal exclusively in `&[u8]` slices.
-///   As per the reccomendation of the library, we are using Compat mode. Effecient mode may be used if it increases the program's efficiency.
+/// 
+/// As per the reccomendation of the library, we are using Compat mode. Effecient mode may be used if it increases the program's efficiency.
 type DiffMode = diff_match_patch_rs::Compat;
 
 /// Attempts to merge two [`LuaFile`]s.
@@ -34,7 +35,7 @@ type DiffMode = diff_match_patch_rs::Compat;
 /// This function will only error if merging is not possible in some way, shape, or form.
 /// Specifics:
 /// - Will return [`ModdingError::RenameError`] if, while attempting to merge an Injected and Overridden mod (see below), the dictionary of renamed variables was not properly set in the mod with the injected function.
-/// - Will return [`BabaError::DmpError`] as per the specifications of [`merge_override_functions`] or [`merge_injected_functions`], depending on whether both mods use the Override or Injection method.
+/// - Will return [`crate::error::BabaError::Dmp`] as per the specifications of [`merge_override_functions`] or [`merge_injected_functions`], depending on whether both mods use the Override or Injection method.
 /// ## Override vs Injection
 /// When it comes to baba modding, there are two ways to replace a function native to baba.
 /// While they are unnamed, the first way is known to this program as the "override" method.

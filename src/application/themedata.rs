@@ -10,7 +10,7 @@ use crate::error::applicationerror::ApplicationError;
 
 use super::load_image_from_path;
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone, Copy)]
 pub struct ThemeData {
     dark: Color,         // 0,0
     dark_accent: Color,  //1,0

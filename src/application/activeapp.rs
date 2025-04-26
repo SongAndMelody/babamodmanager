@@ -1,4 +1,5 @@
 use crate::error::babaerror::BabaError;
+use std::fmt::Debug;
 
 use super::{appoptions::AppOptions, appstate::AppState, load_fonts, load_themes, status::Status};
 
@@ -17,6 +18,7 @@ pub struct ActiveApp<'a> {
 }
 
 impl<'a> ActiveApp<'a> {
+    /// Creates a new "active" application from its baseline data.
     pub fn new(
         ctx: &'a egui::Context,
         frame: &'a mut eframe::Frame,
@@ -33,6 +35,7 @@ impl<'a> ActiveApp<'a> {
         }
     }
 
+    /// This is the main function called whenever updates need to be run.
     pub fn render(&mut self) -> Result<(), BabaError> {
         match self.status {
             Status::Startup => {
@@ -56,5 +59,16 @@ impl<'a> ActiveApp<'a> {
             }
         }
         Ok(())
+    }
+}
+
+impl<'a> Debug for ActiveApp<'a> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("ActiveApp")
+            .field("ctx", &self.ctx)
+            .field("state", &self.state)
+            .field("status", &self.status)
+            .field("options", &self.options)
+            .finish()
     }
 }
