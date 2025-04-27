@@ -106,7 +106,7 @@ impl<'a> ActiveApp<'a> {
     }
 }
 
-impl<'a> Debug for ActiveApp<'a> {
+impl Debug for ActiveApp<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("ActiveApp")
             .field("ctx", &self.ctx)
