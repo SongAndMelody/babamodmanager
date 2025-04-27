@@ -9,6 +9,8 @@ pub enum ApplicationError {
     ImageSize,
     #[error("Error when working with images")]
     ImageError(#[from] image::ImageError),
+    #[error("Could not select a currently loaded font")]
+    FontUnavailible
 }
 
 impl From<ParseHexColorError> for ApplicationError {

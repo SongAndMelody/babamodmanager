@@ -1,9 +1,14 @@
-use egui::{CentralPanel, Context, FullOutput, RawInput, Rect, SidePanel, TopBottomPanel};
+use egui::{
+    text::LayoutJob, CentralPanel, FontId, Rect, SidePanel, TextFormat, TopBottomPanel, Ui,
+};
 
-use crate::error::babaerror::BabaError;
+use crate::error::{applicationerror::ApplicationError, babaerror::BabaError};
 use std::fmt::Debug;
 
-use super::{appoptions::AppOptions, appstate::AppState, load_fonts, load_themes, status::Status};
+use super::{
+    appoptions::AppOptions, appstate::AppState, load_fonts, load_themes, status::Status,
+    themedata::ThemeData,
+};
 
 /// Represents the currently running application.
 /// Has access to all the data involved by mutable reference.
@@ -47,9 +52,14 @@ impl<'a> ActiveApp<'a> {
                 // load font
                 self.load_currently_selected_font()?;
                 // startup options
-                self.run(|ctx| {
-                    central_panel().show(ctx, |ui| {
-                    });
+                central_panel().show(self.ctx, |_ui| {
+                    let mut job = LayoutJob::default();
+                    let font_id = self.currently_selected_font().unwrap_or_default();
+                    job.append(
+                        "baba",
+                        0.0,
+                        TextFormat::simple(font_id, self.theme_data().bonus.color()),
+                    );
                 });
             }
             Status::Settings => {}
@@ -68,9 +78,17 @@ impl<'a> ActiveApp<'a> {
         Ok(())
     }
 
-    pub fn run(&mut self, run_ui: impl FnMut(&Context)) -> FullOutput {
-        let input = RawInput::default();
-        self.ctx.run(input, run_ui)
+    pub fn currently_selected_font(&mut self) -> Result<FontId, BabaError> {
+        for font in load_fonts()? {
+            if font.name == self.options.font {
+                return Ok(FontId::new(1.0, egui::FontFamily::Name(font.name.into())));
+            }
+        }
+        Err(BabaError::Application(ApplicationError::FontUnavailible))
+    }
+
+    pub fn theme_data(&self) -> ThemeData {
+        self.options.theme
     }
 
     pub fn rendering_area(&self) -> Rect {
@@ -118,3 +136,6 @@ fn bottom_panel(id: &'static str) -> TopBottomPanel {
 fn central_panel() -> CentralPanel {
     CentralPanel::default()
 }
+
+/// Explitily do nothing with a [Ui] object.
+fn do_nothing_with_ui(_ui: &mut Ui) {}

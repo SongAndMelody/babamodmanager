@@ -9,21 +9,21 @@ use super::{load_image_from_path, pixel_index};
 
 #[derive(Debug, Serialize, Deserialize, Clone, Copy)]
 pub struct ThemeData {
-    dark: Color,         // 0,0
-    dark_accent: Color,  //1,0
-    light: Color,        //0,3
-    light_accent: Color, //0,2
-    grey: Color,         //0,1
+    pub dark: Color,         // 0,0
+    pub dark_accent: Color,  //1,0
+    pub light: Color,        //0,3
+    pub light_accent: Color, //0,2
+    pub grey: Color,         //0,1
 
-    error: Color,        //2,1
-    warning: Color,      //2,4
-    accept: Color,       //5,2
-    link: Color,         //1,4
-    link_visited: Color, //1,2
+    pub error: Color,        //2,1
+    pub warning: Color,      //2,4
+    pub accept: Color,       //5,2
+    pub link: Color,         //1,4
+    pub link_visited: Color, //1,2
 
-    spore: Color,   //3,4
-    blossom: Color, //4,2
-    bonus: Color,   //4,1
+    pub spore: Color,   //3,4
+    pub blossom: Color, //4,2
+    pub bonus: Color,   //4,1
 }
 
 impl ThemeData {
