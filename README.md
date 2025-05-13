@@ -48,6 +48,16 @@ Dyslecic and DyslexicMono are from OpenDyslexic: <https://opendyslexic.org/>
 
 Abstract, Autumn, Crystal, Default, Factory, garden, High Contrast, Marshmallow, Monochromatic Grey, Monochromatic Red, Mountain, Ocean, Ruins, Space, Swamp, Vibrant and Volcano are all taken directly from Baba is You.
 
+Haven is Babaisyoo's "Resting Haven" palette.
+
+Graves, Pollution, Shogun, and Thunders are taken from [D3vland](https://d3vq.itch.io/baba-d3vland) by D3v0553.
+
 Pico-8 and Win95 are taken from their respective operating systems' palettes.
 
+Godot is based off of Godot's text editor's colors, collated by Dogeiscut.
+
 Sheaflet's colors are taken from [Rosy42](https://lospec.com/palette-list/rosy-42) by PineappleOnPizza.
+
+### Copyright Attribution
+
+Steam's Logo: © 2025 Valve Corporation. All rights reserved. Valve, as well as the Steam logo, are trademarks and/or registered trademarks of Valve Corporation. [Copyright Notice](https://store.steampowered.com/legal/)

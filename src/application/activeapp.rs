@@ -41,30 +41,34 @@ impl<'a> ActiveApp<'a> {
         status: &'a mut Status,
         options: &'a mut AppOptions,
     ) -> Self {
-        Self {
+        let mut this = Self {
             ctx,
             frame,
             state,
             status,
             options,
-        }
+        };
+        let _ = this.setup();
+        this
     }
 
     /// This is the main function called whenever updates need to be run.
     pub fn render(&mut self) -> Result<(), BabaError> {
         match self.status {
-            Status::Startup => {
-                // application setup: load palettes
-                let palettes = load_themes()?;
-                self.state.palettes = palettes;
-                // load font
-                self.load_currently_selected_font()?;
-                self.startup()
-            }
+            Status::Startup => self.startup(),
             Status::Settings => self.settings(),
             Status::About => self.about(),
             Status::Overview => self.overview(),
         }
+    }
+
+    fn setup(&mut self) -> Result<(), BabaError> {
+        // application setup: load palettes
+        let palettes = load_themes()?;
+        self.state.palettes = palettes;
+        // load font
+        self.load_currently_selected_font()?;
+        Ok(())
     }
 
     pub fn startup(&mut self) -> Result<(), BabaError> {
@@ -207,4 +211,4 @@ fn central_panel() -> CentralPanel {
 }
 
 /// Explitily do nothing with a [Ui] object.
-fn do_nothing_with_ui(_ui: &mut Ui) {}
+fn do_nothing(_ui: &mut Ui) {}
