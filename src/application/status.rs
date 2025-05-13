@@ -4,7 +4,7 @@ use crate::error::babaerror::BabaError;
 
 use super::{activeapp::ActiveApp, appoptions::AppOptions, appstate::AppState};
 
-#[derive(Debug, Default, Serialize, Deserialize)]
+#[derive(Debug, Default, Serialize, Deserialize, Clone, Copy, Hash)]
 pub enum Status {
     #[default]
     /// Initial startup of the program
@@ -26,6 +26,7 @@ impl Status {
         options: &mut AppOptions,
     ) -> Result<(), BabaError> {
         let mut active = ActiveApp::new(ctx, frame, state, self, options);
+        active.install_image_loaders();
         active.render()
     }
 }
